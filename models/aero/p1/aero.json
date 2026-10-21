@@ -3,7 +3,7 @@
   "generator": "tools.aerogen 0.1.0",
   "config": {
     "file": "p1.toml",
-    "sha256": "2e73c00956e3adaa17c4b1a875525ee7cf0a7f9dcb5ccc4d533e25fea2b4c007"
+    "sha256": "eb2303b5e5cee6a32021eb540f566c7e4cb1a5b195c77ec69fa5dca11a49245f"
   },
   "frame": "body FRD (x nose, y right wing, z down); stations aft from nose",
   "reference": {
@@ -13,12 +13,12 @@
     "moment_reference_station_m": 0.47
   },
   "mass": {
-    "mass_kg": 12.0,
-    "cg_station_m": 0.469333,
+    "mass_kg": 12.7,
+    "cg_station_m": 0.472441,
     "inertia_kg_m2": {
-      "Ixx": 0.247196,
-      "Iyy": 0.877856,
-      "Izz": 1.07067
+      "Ixx": 0.248437,
+      "Iyy": 0.890839,
+      "Izz": 1.08378
     }
   },
   "tables": {
@@ -33,8 +33,8 @@
     "Clp": -0.63046,
     "Cnr": -0.175123,
     "CYr": 0.386301,
-    "Clr": 0.200136,
-    "Cnp": -0.100068,
+    "Clr": 0.21181,
+    "Cnp": -0.105905,
     "CL_elevon_sym": 1.67972,
     "Cm_elevon_sym": -0.340573,
     "Cl_elevon_diff": 0.482919,
@@ -67,17 +67,17 @@
   },
   "hover_allocation": {
     "rpm": 8451.54,
-    "shaft_power_w": 3128.94,
-    "rotor_torque_nm": 1.76768,
-    "vane_arm_m": 0.189333,
-    "pitch_yaw_moment_per_vane_rad_nm": 17.8246,
-    "thrust_axis_moment_per_rpm_split_nm": 0.000836618
+    "shaft_power_w": 3406.68,
+    "rotor_torque_nm": 1.92458,
+    "vane_arm_m": 0.192441,
+    "pitch_yaw_moment_per_vane_rad_nm": 19.174,
+    "thrust_axis_moment_per_rpm_split_nm": 0.000910879
   },
   "cruise_trim": {
-    "alpha_deg": 8.29222,
-    "CL": 0.800543,
-    "CD": 0.0907717,
-    "rpm": 5478.38
+    "alpha_deg": 8.98575,
+    "CL": 0.847241,
+    "CD": 0.0986858,
+    "rpm": 5509.98
   },
-  "static_margin": 0.103186
+  "static_margin": 0.100629
 }

@@ -20,7 +20,7 @@ air_density_kg_m3 = 1.225   # ISA deniz seviyesi
 gravity_m_s2 = 9.80665
 
 [mass]
-mtow_kg = 12.0
+mtow_kg = 12.7   # 2 × 6S LiPo ile (tasarım dokümanı, 2026-10-21)
 # Bileşenler tasarım dokümanındaki ağırlık tablosundan. İstasyonlar ve kutu
 # boyutları (size_m = [x, y, z], ataleti kaba tahmin için) VARSAYIM.
 # Batarya istasyonu kızakla ayarlanır; statik marjı bu belirler.
@@ -29,14 +29,14 @@ components = [
   { name = "duct",       mass_kg = 0.60, station_m = 0.13, size_m = [0.25, 0.34, 0.34] },
   { name = "wing",       mass_kg = 1.00, station_m = 0.56, size_m = [0.40, 1.50, 0.04] },
   { name = "tail",       mass_kg = 0.50, station_m = 1.15, size_m = [0.15, 0.50, 0.50] },
-  # 2 × Profuse 6S 16000 mAh LiPo seri (12S). Paket başına ~1,95 kg VARSAYIM
+  # 2 × Profuse 6S 16000 mAh LiPo seri (12S), dokümandaki tahmin 4,0 kg
   # (üretici verisi bulunamadı; aynı sınıf 16 Ah 6S paketler 1,86–1,99 kg).
-  { name = "battery",    mass_kg = 3.90, station_m = 0.48, size_m = [0.30, 0.15, 0.08] },
+  { name = "battery",    mass_kg = 4.00, station_m = 0.47, size_m = [0.30, 0.15, 0.08] },
   { name = "propulsion", mass_kg = 1.60, station_m = 0.12, size_m = [0.15, 0.10, 0.10] },
   { name = "payload",    mass_kg = 1.00, station_m = 0.42, size_m = [0.12, 0.12, 0.12] },
   { name = "avionics",   mass_kg = 0.80, station_m = 0.60, size_m = [0.20, 0.08, 0.08] },
   { name = "companion",  mass_kg = 0.70, station_m = 0.52, size_m = [0.15, 0.10, 0.08] },
-  # Dokümandaki 0,6 kg pay (margin) daha ağır LiPo bataryaya harcandı; pay artık 0.
+  { name = "margin",     mass_kg = 0.60, station_m = 0.60, size_m = [0.20, 0.10, 0.10] },
   { name = "vanes",      mass_kg = 0.40, station_m = 0.29, size_m = [0.08, 0.30, 0.30] },
 ]
 
@@ -133,9 +133,9 @@ usable_fraction = 0.85        # VARSAYIM
 
 [requirements]
 cruise_speed_m_s = 20.0
-cruise_cl_doc = 0.80
+cruise_cl_doc = 0.85      # 12,7 kg, 20 m/s: W/(qS); dokümandaki 0,80 12 kg içindi
 cruise_lift_to_drag_doc = 9.0
-endurance_min = 60.0
+endurance_min = 40.0      # hedef 40–45 dk
 hover_time_per_sortie_s = 120.0   # kalkış + iniş + geçişler, VARSAYIM
 hover_wind_m_s = 8.0
 static_margin_min = 0.08
