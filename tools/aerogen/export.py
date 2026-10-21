@@ -105,6 +105,7 @@ def generate(cfg: dict, out_dir: str | Path) -> dict:
             "CL": res["cruise"]["cl"], "CD": res["cruise"]["cd"], "rpm": res["cruise"]["rpm"],
         },
         "static_margin": res["static_margin"],
+        "stall": res["stall"],
     }
     (out / "aero.json").write_text(json.dumps(_round(meta), indent=2, ensure_ascii=False) + "\n",
                                    encoding="utf-8", newline="\n")

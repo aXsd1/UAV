@@ -59,6 +59,11 @@ def analyse(cfg: dict) -> dict:
     rps_cruise = fan.rps_for_thrust(drag, v)
     p_cruise_shaft = fan.shaft_power(rps_cruise, v) if rps_cruise else float("nan")
 
+    # Stall: CLmax of the whole airframe (attached branch) and the 1 g stall speed.
+    a_scan = np.radians(np.arange(0.0, 30.0, 0.1))
+    cl_max = float(np.max(ac.longitudinal(a_scan)[0]))
+    v_stall = math.sqrt(2.0 * weight / (rho * ac.S * cl_max))
+
     # Cruise pitch trim: airframe Cm about the CG plus the duct momentum drag (the duct sits
     # ahead of the CG and sees the cross-flow V sin(alpha), a nose-up moment).
     _, _, cm_trim0 = cm_about_cg(ac, a_trim, mp.cg_station)
@@ -132,6 +137,8 @@ def analyse(cfg: dict) -> dict:
         Check("Kütle toplamı", f"{mp.mass:.2f} kg", f"{cfg['mass']['mtow_kg']:.2f} kg", abs(mp.mass - cfg["mass"]["mtow_kg"]) < 1e-6),
         Check("Ağırlık merkezi istasyonu", f"{mp.cg_station:.3f} m", "bilgi", None),
         Check("Statik marj (seyir)", f"{static_margin * 100:.1f} %", f"{sm_lo * 100:.0f}–{sm_hi * 100:.0f} %", sm_lo <= static_margin <= sm_hi),
+        Check("Tutunma hızı (CLmax)", f"{v_stall:.1f} m/s (CLmax {cl_max:.2f})",
+              f"seyir {v:.0f} m/s ≥ {req['min_cruise_stall_margin']:.2f} × tutunma", v >= req["min_cruise_stall_margin"] * v_stall),
         Check("Seyirde gereken CL", f"{cl_req:.3f}", f"≈ {req['cruise_cl_doc']:.2f} (doküman)", abs(cl_req - req["cruise_cl_doc"]) < 0.03),
         Check("Seyir hücum açısı", f"{math.degrees(a_trim):.1f}°", f"< stall {math.degrees(ac.wing.alpha_stall):.0f}°", a_trim < ac.wing.alpha_stall - math.radians(3)),
         Check("Seyir trim elevonu (momentum sürüklemesi dahil)", f"{de_trim:+.1f}°",
@@ -168,6 +175,7 @@ def analyse(cfg: dict) -> dict:
                   # +d rpm on one rotor, -d rpm on the other; Q ~ n^2.
                   "thrust_axis_moment_per_rpm_split_nm": 2.0 * 2.0 * q_hover / (rps_hover * 60)},
         "static_margin": static_margin,
+        "stall": {"cl_max": cl_max, "v_stall_m_s": v_stall},
         "max_unit_thrust_n": t_max,
     }
 

@@ -8,6 +8,7 @@ Değerler el hesabıdır (pervane kapalı gövde aerodinamiği, kanallı momentu
 | Kütle toplamı | 12.70 kg | 12.70 kg | GEÇTİ |
 | Ağırlık merkezi istasyonu | 0.473 m | bilgi | bilgi |
 | Statik marj (seyir) | 11.0 % | 8–12 % | GEÇTİ |
+| Tutunma hızı (CLmax) | 18.5 m/s (CLmax 0.99) | seyir 20 m/s ≥ 1.25 × tutunma | KALDI |
 | Seyirde gereken CL | 0.847 | ≈ 0.85 (doküman) | GEÇTİ |
 | Seyir hücum açısı | 9.6° | < stall 15° | GEÇTİ |
 | Seyir trim elevonu (momentum sürüklemesi dahil) | +0.0° | |δe| ≤ 5° (azami 25°) | GEÇTİ |

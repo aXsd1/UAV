@@ -151,6 +151,7 @@ hover_time_per_sortie_s = 120.0   # kalkış + iniş + geçişler, VARSAYIM
 hover_wind_m_s = 8.0
 static_margin_min = 0.08
 static_margin_max = 0.12
+min_cruise_stall_margin = 1.25    # seyir hızı / tutunma hızı
 max_cruise_trim_elevon_deg = 5.0  # seyirde trim için gereken elevon
 tip_over_margin_deg = 5.0         # devrilme açısı ≥ rüzgârda askı yatışı + bu pay
 ground_tip_safety = 1.5           # yerde, motorlar kapalı: geri getiren moment / rüzgâr momenti
