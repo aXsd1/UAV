@@ -77,6 +77,10 @@ def analyse(cfg: dict) -> dict:
     e_hover = p_hover_shaft / eta_motor * req["hover_time_per_sortie_s"] / 3600.0
     e_cruise = p_cruise_shaft / eta_motor * req["endurance_min"] / 60.0
     e_usable = bat["energy_wh"] * bat["usable_fraction"]
+    cruise_minutes = (e_usable - e_hover) / (p_cruise_shaft / eta_motor) * 60.0
+    v_nominal = 3.7 * bat["cells_series"]
+    i_max = p_max_shaft / eta_motor / v_nominal
+    i_limit = bat["max_continuous_c"] * bat["capacity_ah"]
 
     # Hover control authority vs a steady side wind (propeller-off airframe load only;
     # duct momentum drag is NOT included, so this is optimistic).
@@ -112,6 +116,8 @@ def analyse(cfg: dict) -> dict:
         Check(f"T/W={cfg['rotors']['max_thrust_to_weight']} için mil gücü", f"{p_max_shaft:.0f} W", f"≤ motor tepe {p_motor_peak:.0f} W", p_max_shaft <= p_motor_peak),
         Check("Kanal çıkış hızı (askı)", f"{fan.exit_velocity(weight):.1f} m/s", "bilgi", None),
         Check("Görev enerjisi", f"{e_hover + e_cruise:.0f} Wh (askı {e_hover:.0f} + seyir {e_cruise:.0f})", f"≤ kullanılabilir {e_usable:.0f} Wh", e_hover + e_cruise <= e_usable),
+        Check("Ulaşılabilir seyir süresi", f"{cruise_minutes:.0f} dk", f"≥ {req['endurance_min']:.0f} dk", cruise_minutes >= req["endurance_min"]),
+        Check("Batarya akımı (T/W tepe, nominal gerilim)", f"{i_max:.0f} A @ {v_nominal:.1f} V", f"≤ {i_limit:.0f} A ({bat['max_continuous_c']:.0f}C)", i_max <= i_limit),
         Check(f"Vane yunuslama momenti vs {v_w:.0f} m/s yan rüzgâr", f"{m_vane_max:.1f} N·m (kol {vane_arm:.2f} m)", f"> 1,5 × {m_wind_pitch:.1f} N·m rüzgâr momenti", m_vane_max > 1.5 * m_wind_pitch),
         Check(f"Vane sapma momenti vs {v_w:.0f} m/s yan rüzgâr", f"{m_vane_max:.1f} N·m", f"> 1,5 × {m_wind_yaw:.1f} N·m rüzgâr momenti", m_vane_max > 1.5 * m_wind_yaw),
         Check("İtki ekseni etrafında moment (±%10 devir farkı)", f"{m_roll_split:.2f} N·m", "bilgi", None),

@@ -3,7 +3,7 @@
 Pistsiz dikey kalkıp yatay uçuşa geçen, kanal içinde zıt dönen iki pervaneyle
 itilen ve kanal çıkışındaki vane'lerle itki vektörlemesi yapan otonom
 tail-sitter İHA. Önce 12 kg'lık elektrikli prototip (P1), sonra 55 kg'lık seri
-hibrit (P2).
+hibrit (P2). P1 donanım tabanı: Cube Orange+ uçuş kartı, 2 × 6S 16000 mAh LiPo (seri, 12S).
 
 Dayanak dokümanlar:
 - [Tasarım dokümanı](https://claude.ai/code/artifact/04c4a23b-eb41-4dac-b864-000eb6f73aec)

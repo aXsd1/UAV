@@ -49,6 +49,9 @@ def validate(cfg: dict) -> None:
         raise ConfigError("figure of merit must be in (0, 1]")
     if cfg["vanes"]["max_deflection_deg"] > cfg["vanes"]["stall_deflection_deg"]:
         raise ConfigError("vane max deflection exceeds vane stall deflection")
+    for key in ("cells_series", "capacity_ah", "max_continuous_c", "energy_wh", "usable_fraction"):
+        if key not in cfg["battery"]:
+            raise ConfigError(f"battery.{key} missing")
     e = cfg["elevons"]
     if not 0 <= e["span_start_fraction"] < e["span_end_fraction"] <= 1:
         raise ConfigError("elevon span fractions must satisfy 0 <= start < end <= 1")

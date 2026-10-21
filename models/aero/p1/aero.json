@@ -3,7 +3,7 @@
   "generator": "tools.aerogen 0.1.0",
   "config": {
     "file": "p1.toml",
-    "sha256": "e14c6c55a32ba084c56b5c5e6e0b1815a92a19a2e0b5a18f6d10973d33494696"
+    "sha256": "2e73c00956e3adaa17c4b1a875525ee7cf0a7f9dcb5ccc4d533e25fea2b4c007"
   },
   "frame": "body FRD (x nose, y right wing, z down); stations aft from nose",
   "reference": {
@@ -14,11 +14,11 @@
   },
   "mass": {
     "mass_kg": 12.0,
-    "cg_station_m": 0.469833,
+    "cg_station_m": 0.469333,
     "inertia_kg_m2": {
-      "Ixx": 0.244303,
-      "Iyy": 0.879049,
-      "Izz": 1.06663
+      "Ixx": 0.247196,
+      "Iyy": 0.877856,
+      "Izz": 1.07067
     }
   },
   "tables": {
@@ -69,8 +69,8 @@
     "rpm": 8451.54,
     "shaft_power_w": 3128.94,
     "rotor_torque_nm": 1.76768,
-    "vane_arm_m": 0.189833,
-    "pitch_yaw_moment_per_vane_rad_nm": 17.8716,
+    "vane_arm_m": 0.189333,
+    "pitch_yaw_moment_per_vane_rad_nm": 17.8246,
     "thrust_axis_moment_per_rpm_split_nm": 0.000836618
   },
   "cruise_trim": {
@@ -79,5 +79,5 @@
     "CD": 0.0907717,
     "rpm": 5478.38
   },
-  "static_margin": 0.101928
+  "static_margin": 0.103186
 }

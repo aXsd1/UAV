@@ -12,6 +12,7 @@
 [meta]
 name = "p1"
 description = "V-BAT benzeri tail-sitter, koaksiyel kanallı fan, itki vektörleme, 12S elektrik"
+flight_controller = "CubePilot Cube Orange+ (PX4 hedefi: cubepilot_cubeorangeplus)"
 config_version = 1
 
 [environment]
@@ -28,12 +29,14 @@ components = [
   { name = "duct",       mass_kg = 0.60, station_m = 0.13, size_m = [0.25, 0.34, 0.34] },
   { name = "wing",       mass_kg = 1.00, station_m = 0.56, size_m = [0.40, 1.50, 0.04] },
   { name = "tail",       mass_kg = 0.50, station_m = 1.15, size_m = [0.15, 0.50, 0.50] },
-  { name = "battery",    mass_kg = 3.30, station_m = 0.46, size_m = [0.25, 0.10, 0.10] },
+  # 2 × Profuse 6S 16000 mAh LiPo seri (12S). Paket başına ~1,95 kg VARSAYIM
+  # (üretici verisi bulunamadı; aynı sınıf 16 Ah 6S paketler 1,86–1,99 kg).
+  { name = "battery",    mass_kg = 3.90, station_m = 0.48, size_m = [0.30, 0.15, 0.08] },
   { name = "propulsion", mass_kg = 1.60, station_m = 0.12, size_m = [0.15, 0.10, 0.10] },
   { name = "payload",    mass_kg = 1.00, station_m = 0.42, size_m = [0.12, 0.12, 0.12] },
   { name = "avionics",   mass_kg = 0.80, station_m = 0.60, size_m = [0.20, 0.08, 0.08] },
   { name = "companion",  mass_kg = 0.70, station_m = 0.52, size_m = [0.15, 0.10, 0.08] },
-  { name = "margin",     mass_kg = 0.60, station_m = 0.60, size_m = [0.20, 0.10, 0.10] },
+  # Dokümandaki 0,6 kg pay (margin) daha ağır LiPo bataryaya harcandı; pay artık 0.
   { name = "vanes",      mass_kg = 0.40, station_m = 0.29, size_m = [0.08, 0.30, 0.30] },
 ]
 
@@ -119,8 +122,13 @@ servo_rate_deg_s = 300.0      # VARSAYIM
 deadband_deg = 0.5            # VARSAYIM
 
 [battery]
+# Profuse 22,2 V 6S 16000 mAh 40C LiPo × 2, seri bağlı → 44,4 V, 16 Ah.
+chemistry = "LiPo"
+packs = 2
 cells_series = 12
-energy_wh = 660.0
+capacity_ah = 16.0
+max_continuous_c = 40.0
+energy_wh = 710.4
 usable_fraction = 0.85        # VARSAYIM
 
 [requirements]
