@@ -98,8 +98,8 @@ param set-default VT_FW_DIFTHR_S_P 1
 param set-default VT_ARSP_TRANS 19.1
 param set-default VT_F_TRANS_DUR 3
 param set-default VT_B_TRANS_DUR 5
-param set-default FW_THR_TRIM 0.074    # cruise drag / max thrust; the PX4 default (0.6) overshoots
-param set-default FW_THR_MAX 0.30
+param set-default FW_THR_TRIM 0.32    # (cruise rpm / max rpm)^2 from the tables
+param set-default FW_THR_MAX 1.0
 param set-default FW_THR_MIN 0.10      # keep the jet alive: forward-flight pitch comes from the vanes
 param set-default FW_R_LIM 25          # bank limit: a 48 deg loiter bank stalled the wing in SITL
 param set-default NAV_LOITER_RAD 150   # ~20 deg bank at trim speed

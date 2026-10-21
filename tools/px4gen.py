@@ -29,11 +29,6 @@ def _attached_rows():
     return [r for r in ALPHA_TABLE if 0.0 <= r[0] <= 14.0]
 
 
-def cruise_cd_for_cl(cl: float) -> float:
-    rows = _attached_rows()
-    return float(np.interp(cl, [r[1] for r in rows], [r[2] for r in rows]))
-
-
 def cruise_alpha_for_cl(cl: float) -> float:
     rows = _attached_rows()
     return float(np.interp(cl, [r[1] for r in rows], [r[0] for r in rows]))
@@ -61,10 +56,11 @@ def build(cfg: dict, aero: dict, rotor_rows: list[tuple[float, float, float]]) -
     v_trim = max(cfg["requirements"]["cruise_speed_m_s"], 1.25 * v_stall)
     rho = cfg["environment"]["air_density_kg_m3"]
     S = aero["reference"]["area_m2"]
-    # Trim at v_trim: CL from weight, CD from the alpha table polar near that CL.
     cl_t = weight / (0.5 * rho * v_trim ** 2 * S)
-    cd_t = cruise_cd_for_cl(cl_t)
-    fw_thr_trim = cd_t * 0.5 * rho * v_trim ** 2 * S / (tw * weight)   # drag / max thrust
+    # PX4 normalised thrust with THR_MDL_FAC 1 is (motor speed / max)^2. In forward flight the
+    # rotors run at a high advance ratio, so use the cruise rpm from the tables, not static
+    # thrust (that put FW_THR_TRIM at 0.07 and starved the climb in SITL).
+    fw_thr_trim = (aero["cruise_trim"]["rpm"] / aero["rotor"]["max_rpm"]) ** 2
     fw_psp_off = cruise_alpha_for_cl(cl_t)
 
     return f"""#!/bin/sh
@@ -167,8 +163,8 @@ param set-default VT_FW_DIFTHR_S_P 1
 param set-default VT_ARSP_TRANS {v_min:.1f}
 param set-default VT_F_TRANS_DUR 3
 param set-default VT_B_TRANS_DUR 5
-param set-default FW_THR_TRIM {fw_thr_trim:.3f}    # cruise drag / max thrust; the PX4 default (0.6) overshoots
-param set-default FW_THR_MAX {min(1.0, 4 * fw_thr_trim):.2f}
+param set-default FW_THR_TRIM {fw_thr_trim:.2f}    # (cruise rpm / max rpm)^2 from the tables
+param set-default FW_THR_MAX 1.0
 param set-default FW_THR_MIN 0.10      # keep the jet alive: forward-flight pitch comes from the vanes
 param set-default FW_R_LIM 25          # bank limit: a 48 deg loiter bank stalled the wing in SITL
 param set-default NAV_LOITER_RAD 150   # ~20 deg bank at trim speed
