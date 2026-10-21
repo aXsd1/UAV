@@ -18,8 +18,12 @@
 // Inputs:  /<model>/command/motor_speed (gz.msgs.Actuators, rad/s)
 //          /model/<model>/servo_<i>     (gz.msgs.Double, rad)
 //          /model/<model>/wind          (gz.msgs.Vector3d, world ENU m/s, optional override)
+//          /model/<model>/turbulence    (gz.msgs.Double, gust sigma m/s per axis, Gauss-Markov, tau 1.5 s)
+//          /model/<model>/failure       (gz.msgs.StringMsg: "none", "motor <0|1>", "servo <0..4> stuck")
 
 #include <array>
+#include <random>
+#include <sstream>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -28,6 +32,7 @@
 #include <gz/math/Vector3.hh>
 #include <gz/msgs/actuators.pb.h>
 #include <gz/msgs/double.pb.h>
+#include <gz/msgs/stringmsg.pb.h>
 #include <gz/msgs/vector3d.pb.h>
 #include <gz/plugin/Register.hh>
 #include <gz/sim/Link.hh>
@@ -91,6 +96,30 @@ public:
       wind_ = {m.x(), m.y(), m.z()};
     };
     node_.Subscribe("/model/" + model_name + "/wind", wind_cb);
+    std::function<void(const gz::msgs::Double &)> turb_cb = [this](const gz::msgs::Double &m) {
+      std::lock_guard<std::mutex> lock(mutex_);
+      turbulence_sigma_ = std::max(0.0, m.data());
+    };
+    node_.Subscribe("/model/" + model_name + "/turbulence", turb_cb);
+    std::function<void(const gz::msgs::StringMsg &)> fail_cb = [this](const gz::msgs::StringMsg &m) {
+      std::lock_guard<std::mutex> lock(mutex_);
+      std::istringstream in(m.data());
+      std::string what;
+      int idx = -1;
+      in >> what >> idx;
+      if (what == "none") {
+        motor_failed_ = {false, false};
+        servo_stuck_.fill(false);
+      } else if (what == "motor" && idx >= 0 && idx < 2) {
+        motor_failed_[idx] = true;
+      } else if (what == "servo" && idx >= 0 && idx < 5) {
+        servo_stuck_[idx] = true;
+        stuck_pending_[idx] = true;  // latch the current deflection on the next step
+      }
+      gzmsg << "[VtolDynamics] failure: " << m.data() << "\n";
+    };
+    node_.Subscribe("/model/" + model_name + "/failure", fail_cb);
+    rng_.seed(sdf->Get<unsigned>("seed", 1u).first);
     gzmsg << "[VtolDynamics] loaded " << dir << " for " << model_name << "\n";
   }
 
@@ -103,15 +132,39 @@ public:
     Pair rotor_cmd{}, vane_cmd{}, elevon_cmd{};
     double elevator_cmd = 0.0;
     gz::math::Vector3d wind;
+    double sigma = 0.0;
+    std::array<bool, 5> stuck{}, latch{};
     {
       std::lock_guard<std::mutex> lock(mutex_);
       rotor_cmd = motor_cmd_;
+      for (int i = 0; i < 2; ++i) {
+        if (motor_failed_[i]) rotor_cmd[i] = 0.0;
+      }
       vane_cmd = {servo_cmd_[0], servo_cmd_[1]};
       elevon_cmd = {servo_cmd_[2], servo_cmd_[3]};
       elevator_cmd = servo_cmd_[4];
       wind = wind_;
+      sigma = turbulence_sigma_;
+      stuck = servo_stuck_;
+      latch = stuck_pending_;
+      stuck_pending_.fill(false);
+    }
+    // Stuck servos: hold the deflection they had when the failure started.
+    std::array<double *, 5> servo_state{&actuators_.vane[0], &actuators_.vane[1], &actuators_.elevon[0],
+                                        &actuators_.elevon[1], &actuators_.elevator};
+    for (int k = 0; k < 5; ++k) {
+      if (latch[k]) stuck_value_[k] = *servo_state[k];
     }
     const Pair accel = actuators_.step(vehicle_->params(), rotor_cmd, vane_cmd, elevon_cmd, dt, elevator_cmd);
+    for (int k = 0; k < 5; ++k) {
+      if (stuck[k]) *servo_state[k] = stuck_value_[k];
+    }
+
+    // Turbulence: first-order Gauss-Markov gust per axis on top of the mean wind.
+    const double a = std::exp(-dt / kGustTau);
+    const double b = sigma * std::sqrt(1.0 - a * a);
+    for (int i = 0; i < 3; ++i) gust_[i] = a * gust_[i] + b * normal_(rng_);
+    wind += gz::math::Vector3d(gust_[0], gust_[1], gust_[2]);
 
     const auto pose = link_.WorldPose(ecm);
     const auto v_world = link_.WorldLinearVelocity(ecm);
@@ -152,6 +205,15 @@ private:
   std::array<int, 5> servo_idx_{0, 1, 2, 3, 4};
   Pair motor_cmd_{};
   std::array<double, 5> servo_cmd_{};
+  // Scenario hooks (Monte Carlo): turbulence and actuator failures.
+  static constexpr double kGustTau = 1.5;  // s
+  double turbulence_sigma_{0.0};
+  std::array<double, 3> gust_{};
+  std::mt19937 rng_;
+  std::normal_distribution<double> normal_{0.0, 1.0};
+  std::array<bool, 2> motor_failed_{};
+  std::array<bool, 5> servo_stuck_{}, stuck_pending_{};
+  std::array<double, 5> stuck_value_{};
 };
 
 }  // namespace vtol
