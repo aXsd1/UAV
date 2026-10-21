@@ -63,6 +63,16 @@ def urban_spawn_pose() -> str:
     raise RuntimeError("no open urban spot found")
 
 
+def completed_indices(scenario: str, seed: int) -> set[int]:
+    done = set()
+    for f in (ROOT / "runs" / "montecarlo").glob(f"*_{scenario}/results.jsonl"):
+        for line in f.read_text(encoding="utf-8").splitlines():
+            r = json.loads(line)
+            if r.get("scenario") == scenario and r["seed"] - r["index"] == seed and "error" not in r:
+                done.add(r["index"])
+    return done
+
+
 def worker(args):
     name, index, seed, speed, slot, out_dir, pose = args
     fn, opts = SCENARIOS[name]
@@ -127,6 +137,8 @@ def main():
     ap.add_argument("--slot-offset", type=int, default=0,
                     help="first PX4 instance id, to run beside another set without sharing instances")
     ap.add_argument("--stagger", type=float, default=20.0, help="s between slot start-ups")
+    ap.add_argument("--resume", action="store_true",
+                    help="skip run indices already completed (no harness error) for this scenario and seed")
     a = ap.parse_args()
 
     names = list(SCENARIOS) if a.scenario == "all" else [a.scenario]
@@ -137,6 +149,13 @@ def main():
     if pose:
         print("urban spawn pose:", pose)
     indices = [a.only] if a.only is not None else range(a.start, a.n)
+    if a.resume:
+        done = completed_indices(names[0], a.seed)
+        indices = [i for i in indices if i not in done]
+        print(f"resume: {len(done)} already done, {len(indices)} to run", flush=True)
+        if not indices:
+            out_dir.rmdir()
+            return
     jobs = [(name, i, a.seed, a.speed, a.slot_offset + k % a.parallel, out_dir, pose, a.stagger * (k % a.parallel))
             for k, (name, i) in enumerate((n, i) for n in names for i in indices)]
     records = []
