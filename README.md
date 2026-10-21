@@ -55,6 +55,8 @@ config/p1.toml ──► tools/aerogen ──► models/aero/p1/*.csv + aero.jso
 
 ## SITL (WSL2 Ubuntu 24.04)
 
+Adım adım çalıştırma rehberi: [docs/CALISTIRMA.md](docs/CALISTIRMA.md).
+
 Bir kez, WSL içinde: `tools/setup/wsl_setup.sh` (PX4, Gazebo Harmonic, ROS 2 Jazzy,
 XRCE-DDS Agent), sonra `px4/install.sh`. Uçurmak için `px4/run_sitl.sh`;
 pencerisiz duman testi için `px4/sitl_hover_check.sh` (`WIND=8` ile rüzgârlı).
