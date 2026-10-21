@@ -19,3 +19,6 @@ external/
 *.ulg
 runs/
 logs/
+
+# Editor-local settings
+.vscode/
