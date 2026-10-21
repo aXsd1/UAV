@@ -123,6 +123,10 @@ def main():
     ap.add_argument("--speed", type=float, default=1.0)
     ap.add_argument("--seed", type=int, default=1)
     ap.add_argument("--only", type=int, help="repeat a single run index")
+    ap.add_argument("--start", type=int, default=0, help="first run index (to continue a stopped set)")
+    ap.add_argument("--slot-offset", type=int, default=0,
+                    help="first PX4 instance id, to run beside another set without sharing instances")
+    ap.add_argument("--stagger", type=float, default=20.0, help="s between slot start-ups")
     a = ap.parse_args()
 
     names = list(SCENARIOS) if a.scenario == "all" else [a.scenario]
@@ -132,13 +136,13 @@ def main():
     pose = urban_spawn_pose() if "urban_landing" in names else None
     if pose:
         print("urban spawn pose:", pose)
-    indices = [a.only] if a.only is not None else range(a.n)
-    jobs = [(name, i, a.seed, a.speed, k % a.parallel, out_dir, pose)
+    indices = [a.only] if a.only is not None else range(a.start, a.n)
+    jobs = [(name, i, a.seed, a.speed, a.slot_offset + k % a.parallel, out_dir, pose, a.stagger * (k % a.parallel))
             for k, (name, i) in enumerate((n, i) for n in names for i in indices)]
     records = []
     # one worker per slot so two runs never share a PX4 instance id
     with mp.get_context("spawn").Pool(a.parallel, maxtasksperchild=1) as pool:
-        slots = [[j for j in jobs if j[4] == s] for s in range(a.parallel)]
+        slots = [[j for j in jobs if j[4] == a.slot_offset + s] for s in range(a.parallel)]
         for recs in pool.map(_run_slot, slots):
             records += recs
     summarize(out_dir, records)
@@ -146,7 +150,9 @@ def main():
 
 
 def _run_slot(jobs):
-    return [worker(j) for j in jobs]
+    if jobs:
+        time.sleep(jobs[0][7])  # staggered start-up: simultaneous PX4/Gazebo launches tripped each other
+    return [worker(j[:7]) for j in jobs]
 
 
 if __name__ == "__main__":

@@ -139,16 +139,19 @@ class Sim:
                 self.sleep_sim(ramp_s / steps)
 
     def sim_time(self) -> float:
-        for _ in range(3):  # gz transport discovery can stall under load
+        """PX4 time in seconds. PX4 runs in lockstep with Gazebo, so this is simulation time. Read with
+        the light px4-listener client: polling Gazebo's /stats with the gz CLI (Ruby + transport
+        discovery per call) piled up and stalled runs at 3+ parallel instances."""
+        for _ in range(3):
             try:
-                r = subprocess.run(["gz", "topic", "-e", "-n", "1", "-t", f"/world/{self.world}/stats"],
-                                   env=self.env, capture_output=True, text=True, timeout=45)
+                ts = self.listen("vehicle_status").get("timestamp", "")
             except subprocess.TimeoutExpired:
                 continue
-            m = re.search(r"sim_time\s*\{\s*sec:\s*(\d+)(?:\s*nsec:\s*(\d+))?", r.stdout)
+            m = re.match(r"(\d+)", ts)
             if m:
-                return int(m.group(1)) + int(m.group(2) or 0) * 1e-9
-        raise SimError("no sim time from Gazebo")
+                return int(m.group(1)) / 1e6
+            time.sleep(1.0)
+        raise SimError("no time from PX4")
 
     def sleep_sim(self, seconds: float):
         target = self.sim_time() + seconds
