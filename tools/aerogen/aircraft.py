@@ -115,7 +115,8 @@ class Aircraft:
         cm += cm_w + self._arm(w["quarter_chord_station_m"]) / self.c * z
 
         k = self.eta_t * self.fin_pair.area / self.S
-        cl_h, cd_h, _ = self.fin_pair.coefficients(alpha - self.downwash(alpha))
+        i_h = math.radians(t.get("horizontal_incidence_deg", 0.0))
+        cl_h, cd_h, _ = self.fin_pair.coefficients(alpha - self.downwash(alpha) + i_h)
         x, z = self._to_body(cl_h, cd_h, alpha)
         cx += k * x
         cz += k * z

@@ -87,7 +87,9 @@ param set-default MC_AIRMODE 1
 # --- VTOL / forward flight --------------------------------------------------------
 param set-default VT_TYPE 0
 param set-default VT_ELEV_MC_LOCK 1
-param set-default VT_FW_DIFTHR_EN 0
+# No rudder: fixed-wing yaw goes to the hover matrix (vane yaw) through the differential-thrust path.
+param set-default VT_FW_DIFTHR_EN 1
+param set-default VT_FW_DIFTHR_S_Y 1
 param set-default VT_ARSP_TRANS 16
 param set-default VT_F_TRANS_DUR 3
 param set-default VT_B_TRANS_DUR 5

@@ -59,6 +59,15 @@ def analyse(cfg: dict) -> dict:
     rps_cruise = fan.rps_for_thrust(drag, v)
     p_cruise_shaft = fan.shaft_power(rps_cruise, v) if rps_cruise else float("nan")
 
+    # Cruise pitch trim: airframe Cm about the CG plus the duct momentum drag (the duct sits
+    # ahead of the CG and sees the cross-flow V sin(alpha), a nose-up moment).
+    _, _, cm_trim0 = cm_about_cg(ac, a_trim, mp.cg_station)
+    t_cruise = drag
+    sa_ = fan.rho * fan.exit_area_ratio * fan.disk_area
+    mdot_cruise = sa_ * fan.exit_velocity(t_cruise, v * math.cos(a_trim))
+    m_md = mdot_cruise * v * math.sin(a_trim) * (mp.cg_station - cfg["duct"]["center_station_m"])
+    cm_trim = float(cm_trim0) + m_md / (q * ac.S * ac.c)
+
     # Static margin from d(Cm)/d(CL) about the CG at the trim point.
     da = math.radians(0.5)
     cl1, _, cm1 = cm_about_cg(ac, a_trim - da, mp.cg_station)
@@ -116,6 +125,7 @@ def analyse(cfg: dict) -> dict:
     m_roll_split = q_hover * (1.1 ** 2 - 0.9 ** 2)
 
     derivs = ac.derivatives(float(cl_t))
+    de_trim = math.degrees(-cm_trim / derivs["Cm_elevon_sym"])
 
     sm_lo, sm_hi = req["static_margin_min"], req["static_margin_max"]
     checks = [
@@ -124,6 +134,9 @@ def analyse(cfg: dict) -> dict:
         Check("Statik marj (seyir)", f"{static_margin * 100:.1f} %", f"{sm_lo * 100:.0f}–{sm_hi * 100:.0f} %", sm_lo <= static_margin <= sm_hi),
         Check("Seyirde gereken CL", f"{cl_req:.3f}", f"≈ {req['cruise_cl_doc']:.2f} (doküman)", abs(cl_req - req["cruise_cl_doc"]) < 0.03),
         Check("Seyir hücum açısı", f"{math.degrees(a_trim):.1f}°", f"< stall {math.degrees(ac.wing.alpha_stall):.0f}°", a_trim < ac.wing.alpha_stall - math.radians(3)),
+        Check("Seyir trim elevonu (momentum sürüklemesi dahil)", f"{de_trim:+.1f}°",
+              f"|δe| ≤ {req['max_cruise_trim_elevon_deg']:.0f}° (azami {cfg['elevons']['max_deflection_deg']:.0f}°)",
+              abs(de_trim) <= req["max_cruise_trim_elevon_deg"]),
         Check("Seyir L/D", f"{float(cl_t / cd_t):.1f}", f"≈ {req['cruise_lift_to_drag_doc']:.0f} (doküman)", float(cl_t / cd_t) >= 0.85 * req["cruise_lift_to_drag_doc"]),
         Check("Seyir elektrik gücü", f"{p_cruise_shaft / eta_motor:.0f} W", f"≈ {req['cruise_power_doc_w']:.0f} W (doküman)", None),
         Check("Askı devri", f"{rps_hover * 60:.0f} rpm", f"< {fan.max_rps * 60:.0f} rpm", rps_hover < fan.max_rps),

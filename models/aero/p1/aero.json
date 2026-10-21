@@ -3,7 +3,7 @@
   "generator": "tools.aerogen 0.1.0",
   "config": {
     "file": "p1.toml",
-    "sha256": "18869ea9066efebed111726a7c17302f8c912504fba4fd42a2e0ad3c7e59432a"
+    "sha256": "c4c723d170884859c73e602d94bfb0833092340cc9b433eeecaede8c3268e68c"
   },
   "frame": "body FRD (x nose, y right wing, z down); stations aft from nose",
   "reference": {
@@ -81,10 +81,10 @@
     "thrust_axis_moment_per_rpm_split_nm": 0.000910879
   },
   "cruise_trim": {
-    "alpha_deg": 8.98575,
+    "alpha_deg": 9.60652,
     "CL": 0.847241,
-    "CD": 0.0986858,
-    "rpm": 5509.98
+    "CD": 0.107071,
+    "rpm": 5609.27
   },
-  "static_margin": 0.0982522
+  "static_margin": 0.109573
 }
