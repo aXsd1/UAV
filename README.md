@@ -18,9 +18,10 @@ Dayanak dokümanlar:
 | `models/aero/p1/` | Üretilmiş tablolar (Gazebo ve Isaac ikisi de okur) | üretildi |
 | `tests/` | Birim testleri (`unittest`, ek paket gerekmez) | var |
 | `docs/` | Kurallar (eksenler, birimler, tablo formatı) ve karar kaydı | var |
-| `sim/gazebo/vtol_dynamics/` | C++ 6-DOF Gazebo Harmonic eklentisi | arayüz tanımı |
+| `tools/dynamics/` | Referans 6-DOF kuvvet modeli (Python) | var |
+| `sim/gazebo/vtol_dynamics/` | C++ 6-DOF Gazebo Harmonic eklentisi | var, SITL'de uçtu |
 | `sim/isaac/` | Isaac Lab ortamı ve PPO eğitimi | plan |
-| `px4/` | Tailsitter airframe ve control allocation yapılandırması | plan |
+| `px4/` | PX4 yaması, airframe, kurulum ve SITL betikleri | var |
 | `ros2_ws/` | ROS 2 Jazzy çalışma alanı (otonomi paketleri) | boş |
 | `world/` | DEM GLO-30 + OSM'den dünya üretimi | plan |
 
@@ -52,6 +53,11 @@ config/p1.toml ──► tools/aerogen ──► models/aero/p1/*.csv + aero.jso
        + PX4 SITL + ROS 2                        + PPO eğitimi
 ```
 
-Sonraki adımlar (simülasyon dokümanı uygulama sırası 3. madde): Gazebo eklentisi,
-PX4 tailsitter yapılandırması, ilk SITL askısı. PX4 kaynak kodu, Gazebo,
-ROS 2, Isaac Sim ve Docker kurulumu ağır olduğu için onay beklemektedir.
+## SITL (WSL2 Ubuntu 24.04)
+
+Bir kez, WSL içinde: `tools/setup/wsl_setup.sh` (PX4, Gazebo Harmonic, ROS 2 Jazzy,
+XRCE-DDS Agent), sonra `px4/install.sh`. Uçurmak için `px4/run_sitl.sh`;
+pencerisiz duman testi için `px4/sitl_hover_check.sh` (`WIND=8` ile rüzgârlı).
+
+Durum (2026-10-21): 10 m askı ±5 cm, 0,5°; 8 m/s sabit rüzgârda 0,2 m.
+Rüzgârda iniş henüz devriliyor.

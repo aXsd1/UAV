@@ -1,25 +1,20 @@
-# vtol_dynamics — Gazebo Harmonic 6-DOF eklentisi (henüz yazılmadı)
+# vtol_dynamics — Gazebo Harmonic 6-DOF eklentisi
 
-Hazır LiftDrag ve MulticopterMotorModel eklentileri kanal içindeki koaksiyel
-pervaneleri, vane'leri ve 0–90° geçiş aerodinamiğini modelleyemez. Bu eklenti
-bir `gz::sim::System` olarak her adımda araç gövdesine toplam kuvvet ve moment
-uygular.
+Kanal içindeki koaksiyel pervaneleri, vane'leri ve 0–90° geçiş aerodinamiğini
+hazır eklentiler modelleyemediği için araç gövdesine toplam kuvvet ve momenti bu
+sistem uygular.
 
-## Girdi
+- `include/`, `src/model.cpp`: Gazebo'dan bağımsız kuvvet modeli;
+  `tools/dynamics/model.py`'nin C++ karşılığı.
+- `src/VtolDynamics.cpp`: Gazebo sistemi. PX4'ün motor
+  (`/<model>/command/motor_speed`) ve servo (`/model/<model>/servo_<i>`)
+  komutlarını alır, motor gecikmesi ile servo hız sınırı ve ölü bölgeyi uygular,
+  kuvvet ve momenti `base_link`'e (PX4 tailsitter çerçevesi) uygular.
+  Rüzgâr: `/model/<model>/wind` (gz.msgs.Vector3d, dünya ENU, m/s).
+- `test/vectors.json`: Python referansından (`python -m tools.dynamics.vectors`)
+  üretilen 22 vaka; `ctest` C++ çıktısının birebir aynı olduğunu doğrular.
 
-- `models/aero/p1/*.csv` ve `aero.json` (format: `docs/conventions.md`).
-- PX4'ten aktüatör komutları (gz transport): 2 motor, 2 vane ekseni, 2 elevon.
+Derleme ve kurulum WSL içinde `px4/install.sh` ile yapılır.
 
-## Her adımda
-
-1. Gövde eksenindeki hava hızı (araç hızı − rüzgâr) → V, α, β, p, q, r.
-2. Gövde: `airframe_alpha` + `airframe_beta` + sönüm türevleri + elevon türevleri.
-3. Pervaneler: motor gecikmesi → n₁, n₂; `rotor.csv` ile T, Q; tork farkı
-   → itki ekseni etrafında moment; jiroskopik etki (I_rotor).
-4. Kanal: momentum sürüklemesi `ṁ · V_dik`, çıkış hızı.
-5. Vane'ler: servo hız sınırı ve ölü bölge → δ; `vane.csv` ile yan kuvvet ve
-   eksenel kayıp, `exit_station_m`'de uygulanır.
-6. Tüm momentler gerçek AM'ye taşınır (AM rastgeleleştirmesi desteklenir).
-
-Python referansı (`tools/aerogen`) ile aynı sayıları verdiğini gösteren
-birim testleri bu eklentiyle birlikte gelecek.
+Henüz modellenmeyenler: yer etkisi, pervane akışının kanat ve elevonlar
+üzerindeki etkisi, α–β birleşik tablolar, Dryden türbülansı.
