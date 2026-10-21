@@ -101,6 +101,7 @@ def generate(cfg: dict, out_dir: str | Path) -> dict:
         "elevons": {"max_deflection_deg": cfg["elevons"]["max_deflection_deg"]},
         "hover_allocation": res["hover"],
         "cruise_trim": {
+            "speed_m_s": cfg["requirements"]["cruise_speed_m_s"],
             "alpha_deg": math.degrees(res["cruise"]["alpha_rad"]),
             "CL": res["cruise"]["cl"], "CD": res["cruise"]["cd"], "rpm": res["cruise"]["rpm"],
         },

@@ -69,7 +69,7 @@ class Cruise(unittest.TestCase):
         self.m = VtolModel(AERO)
         trim = self.m.meta["cruise_trim"]
         a = math.radians(trim["alpha_deg"])
-        self.v = 20.0 * np.array([math.cos(a), 0.0, math.sin(a)])
+        self.v = trim["speed_m_s"] * np.array([math.cos(a), 0.0, math.sin(a)])
         w = 2 * math.pi * trim["rpm"] / 60.0
         self.inp = dict(v_air=self.v, omega=np.zeros(3), rotor_speed=(w, w), vane=(0.0, 0.0), elevon=(0.0, 0.0))
 

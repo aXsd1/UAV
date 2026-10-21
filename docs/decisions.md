@@ -22,8 +22,12 @@ Kısa kayıtlar; gerekçenin ayrıntısı tasarım ve simülasyon dokümanların
 | 16 | 2026-10-21 | İniş ayağı yarıçapı 0,45 m (kanatçık ucu 0,32 m yerine), +0,1 kg paydan; batarya 0,48 m | 0,32 m'de devrilme açısı 21°, rüzgârda yatış 23° → SITL'de temasta devrildi. 0,45 m: devrilme 28,7°, yerde güvenlik 5,8 |
 | 17 | 2026-10-21 | PX4 yaması `WV_AXIS=1`: weathervane kanat açıklığını rüzgâra çevirir (yakın taraf, en çok 90° dönüş) | Stok weathervane karnı rüzgâra çevirir (kanat rüzgâra dik, 29° yatış); yanlamasına 18° hesap, SITL'de ~6° |
 | 18 | 2026-10-21 | α tabloları yalnız x–z düzlemindeki dinamik basınçla (q cos²β) uygulanır | Tam yan rüzgârda α tanımsızlaşıyor; eski model küçük gürültüyle 87 N sıçrıyordu (regresyon testi eklendi) |
+| 19 | 2026-10-21 | Kanat: reflex profil, açıklık 1,7 m, alan 0,75 m²; seyir 21,8 m/s (1,25 × tutunma 17,4 m/s); kuyruk açısı −4,4°; kanat +0,25 kg paydan (pay 0,05 kg) | Erin'in seçimi. 1,5 m / 0,6 m² kanatta tutunma 18,5 m/s, 20 m/s seyir güvensizdi (SITL'de geçişten sonra tutunma kaybı). Yeni kanatla 40 dk |
+| 20 | 2026-10-21 | FW'de elevonlar yalnız yuvarlanma; yunuslama vane'lerden (VT_FW_DIFTHR_EN 5), yatış sınırı 25°, bekleme yarıçapı 150 m, FW asgari gaz 0,10 | Kanat aerodinamik merkezi AM'ye ~1 cm: elevon yunuslama yerine taşımayı değiştiriyor, burun kaldırırken kanat taşıması çöküyordu |
 
 ## Açık sorular
+
+- Yatay uçuşta yunuslama yetkisi zayıf: ön geçişten sonra 15–18 m irtifa kaybı (hedef < 5 m), FW'de 12–24 m irtifa bandı. Öneri: yatay kuyruk kanatçıklarına elevatör (tüm hareketli ya da flaplı).
 
 - Ani 8 m/s rüzgâr basamağında 1,7 m anlık sapma (6 s'de toparlanıyor). 3 s'de artan rüzgârda en çok 0,8 m (weathervane dönüşü sırasında), sonra ±0,35 m.
 - Weathervane rüzgârda ±10° avlanıyor; kazanç ayarı gerekebilir.

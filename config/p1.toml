@@ -27,17 +27,18 @@ mtow_kg = 12.7   # 2 × 6S LiPo ile (tasarım dokümanı, 2026-10-21)
 components = [
   { name = "fuselage",   mass_kg = 1.50, station_m = 0.65, size_m = [1.30, 0.14, 0.14] },
   { name = "duct",       mass_kg = 0.60, station_m = 0.13, size_m = [0.25, 0.34, 0.34] },
-  { name = "wing",       mass_kg = 1.00, station_m = 0.56, size_m = [0.40, 1.50, 0.04] },
+  # Kanat 0,75 m² / 1,7 m (2026-10-21, Erin): kütle alanla orantılı +0,25 kg VARSAYIM, paydan.
+  { name = "wing",       mass_kg = 1.25, station_m = 0.56, size_m = [0.44, 1.70, 0.04] },
   { name = "tail",       mass_kg = 0.50, station_m = 1.15, size_m = [0.15, 0.50, 0.50] },
   # 2 × Profuse 6S 16000 mAh LiPo seri (12S), dokümandaki tahmin 4,0 kg
   # (üretici verisi bulunamadı; aynı sınıf 16 Ah 6S paketler 1,86–1,99 kg).
-  { name = "battery",    mass_kg = 4.00, station_m = 0.48, size_m = [0.30, 0.15, 0.08] },
+  { name = "battery",    mass_kg = 4.00, station_m = 0.44, size_m = [0.30, 0.15, 0.08] },
   # 3 kW tepe motorlar: 2,2 kW sınıfına göre motor başına ~+0,1 kg VARSAYIM; artış paydan.
   { name = "propulsion", mass_kg = 1.80, station_m = 0.12, size_m = [0.15, 0.10, 0.10] },
   { name = "payload",    mass_kg = 1.00, station_m = 0.42, size_m = [0.12, 0.12, 0.12] },
   { name = "avionics",   mass_kg = 0.80, station_m = 0.60, size_m = [0.20, 0.08, 0.08] },
   { name = "companion",  mass_kg = 0.70, station_m = 0.52, size_m = [0.15, 0.10, 0.08] },
-  { name = "margin",     mass_kg = 0.30, station_m = 0.60, size_m = [0.20, 0.10, 0.10] },
+  { name = "margin",     mass_kg = 0.05, station_m = 0.60, size_m = [0.20, 0.10, 0.10] },
   # İniş ayağı uzantıları: kuyruk kanatçık uçlarından 0,45 m yarıçapa (2026-10-21), VARSAYIM kütle.
   { name = "landing_gear", mass_kg = 0.10, station_m = 1.28, size_m = [0.05, 0.90, 0.90] },
   { name = "vanes",      mass_kg = 0.40, station_m = 0.29, size_m = [0.08, 0.30, 0.30] },
@@ -49,13 +50,13 @@ components = [
 reference_station_m = 0.47
 
 [wing]
-span_m = 1.5
-area_m2 = 0.6                 # ortalama veter = alan / açıklık = 0,40 m (dikdörtgen)
+span_m = 1.7                  # 1,5 m idi; tutunma payı ve dayanıklılık için büyütüldü (2026-10-21)
+area_m2 = 0.75                # ortalama veter = alan / açıklık = 0,44 m (dikdörtgen)
 sweep_deg = 0.0               # VARSAYIM
 quarter_chord_station_m = 0.48  # VARSAYIM; statik marjı ~%10 yapacak şekilde seçildi
 airfoil_lift_slope_per_rad = 6.0      # VARSAYIM (2B, ~0,95·2π)
-airfoil_zero_lift_alpha_deg = -4.0    # VARSAYIM (kamburlu profil)
-airfoil_cm0 = -0.08                   # VARSAYIM (çeyrek veter etrafında)
+airfoil_zero_lift_alpha_deg = -2.0    # VARSAYIM (reflex profil)
+airfoil_cm0 = -0.02                   # VARSAYIM, reflex profil (kuyruksuz uçaklarda tipik)
 cd0 = 0.010                   # VARSAYIM, kanat profil sürüklemesi
 oswald_efficiency = 0.80      # VARSAYIM
 stall_alpha_deg = 15.0        # VARSAYIM
@@ -73,7 +74,7 @@ max_deflection_deg = 25.0     # VARSAYIM
 fin_area_m2 = 0.045           # tek kanatçık, VARSAYIM
 fin_span_m = 0.25             # tek kanatçık (gövdeden uca), VARSAYIM
 quarter_chord_station_m = 1.15  # VARSAYIM
-horizontal_incidence_deg = -5.5   # yatay kanatçık açısı (hücum kenarı aşağı −); seyir trimini elevonsuz sağlar
+horizontal_incidence_deg = -4.4   # yatay kanatçık açısı (hücum kenarı aşağı −); seyir trimini elevonsuz sağlar
 dynamic_pressure_ratio = 0.90   # VARSAYIM
 lift_slope_2d_per_rad = 6.0     # simetrik profil
 cd0 = 0.010
@@ -143,8 +144,8 @@ energy_wh = 710.4
 usable_fraction = 0.85        # VARSAYIM
 
 [requirements]
-cruise_speed_m_s = 20.0
-cruise_cl_doc = 0.85      # 12,7 kg, 20 m/s: W/(qS); dokümandaki 0,80 12 kg içindi
+cruise_speed_m_s = 21.8      # 1,25 × tutunma hızı (17,5 m/s)
+cruise_cl_doc = 0.57      # 12,7 kg, 21,8 m/s, 0,75 m²: W/(qS)
 cruise_lift_to_drag_doc = 9.0
 endurance_min = 40.0      # hedef 40–45 dk
 hover_time_per_sortie_s = 120.0   # kalkış + iniş + geçişler, VARSAYIM

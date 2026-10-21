@@ -3,22 +3,22 @@
   "generator": "tools.aerogen 0.1.0",
   "config": {
     "file": "p1.toml",
-    "sha256": "61cfef8dfc89b1561e147c59feb035098f11b1e0eac99ecc3127a1ff911ed0ff"
+    "sha256": "a754a74bd16331542c1f5399470474fa3dfad3b3ed23062307b091e545323cca"
   },
   "frame": "body FRD (x nose, y right wing, z down); stations aft from nose",
   "reference": {
-    "area_m2": 0.6,
-    "span_m": 1.5,
-    "chord_m": 0.4,
+    "area_m2": 0.75,
+    "span_m": 1.7,
+    "chord_m": 0.441176,
     "moment_reference_station_m": 0.47
   },
   "mass": {
     "mass_kg": 12.7,
-    "cg_station_m": 0.473386,
+    "cg_station_m": 0.46,
     "inertia_kg_m2": {
-      "Ixx": 0.26177,
-      "Iyy": 0.982272,
-      "Izz": 1.17522
+      "Ixx": 0.374928,
+      "Iyy": 0.987973,
+      "Izz": 1.29442
     }
   },
   "tables": {
@@ -28,16 +28,16 @@
     "vane.csv": "jet side force / unit thrust and axial thrust loss / unit thrust vs vane deflection"
   },
   "derivatives_per_rad": {
-    "CLq": 1.44863,
-    "Cmq": -2.46267,
-    "Clp": -0.63046,
-    "Cnr": -0.175123,
-    "CYr": 0.386301,
-    "Clr": 0.21181,
-    "Cnp": -0.105905,
-    "CL_elevon_sym": 1.67972,
-    "Cm_elevon_sym": -0.340573,
-    "Cl_elevon_diff": 0.482919,
+    "CLq": 1.05074,
+    "Cmq": -1.61954,
+    "Clp": -0.631373,
+    "Cnr": -0.109073,
+    "CYr": 0.272683,
+    "Clr": 0.142621,
+    "Cnp": -0.0713106,
+    "CL_elevon_sym": 1.70034,
+    "Cm_elevon_sym": -0.340788,
+    "Cl_elevon_diff": 0.488848,
     "elevon_flap_effectiveness": 0.608998
   },
   "derivative_notes": "damping uses hat rates q c/(2V), p b/(2V), r b/(2V); elevon_sym: both trailing edges down positive; elevon_diff = (left - right)/2, positive rolls right",
@@ -76,19 +76,20 @@
     "rpm": 8451.54,
     "shaft_power_w": 3406.68,
     "rotor_torque_nm": 1.92458,
-    "vane_arm_m": 0.193386,
-    "pitch_yaw_moment_per_vane_rad_nm": 19.2681,
+    "vane_arm_m": 0.18,
+    "pitch_yaw_moment_per_vane_rad_nm": 17.9344,
     "thrust_axis_moment_per_rpm_split_nm": 0.000910879
   },
   "cruise_trim": {
-    "alpha_deg": 9.60652,
-    "CL": 0.847241,
-    "CD": 0.107071,
-    "rpm": 5609.27
+    "speed_m_s": 21.8,
+    "alpha_deg": 6.98761,
+    "CL": 0.570485,
+    "CD": 0.0592126,
+    "rpm": 5668.01
   },
-  "static_margin": 0.109573,
+  "static_margin": 0.100279,
   "stall": {
-    "cl_max": 0.98753,
-    "v_stall_m_s": 18.525
+    "cl_max": 0.895568,
+    "v_stall_m_s": 17.3992
   }
 }

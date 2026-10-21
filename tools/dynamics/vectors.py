@@ -30,7 +30,8 @@ def cases(m: VtolModel):
     trim = m.meta["cruise_trim"]
     a = math.radians(trim["alpha_deg"])
     w_c = 2 * math.pi * trim["rpm"] / 60.0
-    yield "cruise", dict(v_air=[20 * math.cos(a), 0, 20 * math.sin(a)], omega=[0, 0, 0], rotor_speed=[w_c, w_c],
+    V = trim["speed_m_s"]
+    yield "cruise", dict(v_air=[V * math.cos(a), 0, V * math.sin(a)], omega=[0, 0, 0], rotor_speed=[w_c, w_c],
                          vane=[0, 0], elevon=[0, 0])
     yield "cruise_controls_rates", dict(v_air=[19.5, 1.2, 2.9], omega=[0.4, -0.3, 0.2], rotor_speed=[w_c, 0.9 * w_c],
                                        vane=[math.radians(3), math.radians(4)],

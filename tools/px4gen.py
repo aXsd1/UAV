@@ -12,12 +12,31 @@ from __future__ import annotations
 
 import json
 import math
+
+import numpy as np
 from pathlib import Path
 
 from tools.aerogen import config
 
 ROOT = Path(__file__).resolve().parents[1]
 AIRFRAME_ID = 4050
+
+
+ALPHA_TABLE: list[tuple[float, float, float]] = []
+
+
+def _attached_rows():
+    return [r for r in ALPHA_TABLE if 0.0 <= r[0] <= 14.0]
+
+
+def cruise_cd_for_cl(cl: float) -> float:
+    rows = _attached_rows()
+    return float(np.interp(cl, [r[1] for r in rows], [r[2] for r in rows]))
+
+
+def cruise_alpha_for_cl(cl: float) -> float:
+    rows = _attached_rows()
+    return float(np.interp(cl, [r[1] for r in rows], [r[0] for r in rows]))
 
 
 def build(cfg: dict, aero: dict, rotor_rows: list[tuple[float, float, float]]) -> str:
@@ -35,6 +54,18 @@ def build(cfg: dict, aero: dict, rotor_rows: list[tuple[float, float, float]]) -
     # so only its ratio to the rotor torque (CT * KM) matters.
     vane_full = aero["hover_allocation"]["pitch_yaw_moment_per_vane_rad_nm"] * math.radians(vmax)
     hover_thr = 1.0 / tw  # thrust is linearised (THR_MDL_FAC 1), so normalised hover thrust = W / T_max
+    # Fixed-wing speeds from the stall speed of the tables: PX4 must never fly near it.
+    # The trim speed is at least 1.25 V_stall even if the design cruise speed is lower.
+    v_stall = aero["stall"]["v_stall_m_s"]
+    v_min = 1.1 * v_stall
+    v_trim = max(cfg["requirements"]["cruise_speed_m_s"], 1.25 * v_stall)
+    rho = cfg["environment"]["air_density_kg_m3"]
+    S = aero["reference"]["area_m2"]
+    # Trim at v_trim: CL from weight, CD from the alpha table polar near that CL.
+    cl_t = weight / (0.5 * rho * v_trim ** 2 * S)
+    cd_t = cruise_cd_for_cl(cl_t)
+    fw_thr_trim = cd_t * 0.5 * rho * v_trim ** 2 * S / (tw * weight)   # drag / max thrust
+    fw_psp_off = cruise_alpha_for_cl(cl_t)
 
     return f"""#!/bin/sh
 #
@@ -77,11 +108,14 @@ param set-default CA_SV_CS0_TYPE 12       # vane, pitch axis (hover matrix)
 param set-default CA_SV_CS0_TRQ_P {vane_full:.3f}
 param set-default CA_SV_CS1_TYPE 12       # vane, fixed-wing yaw axis = MC roll (hover matrix)
 param set-default CA_SV_CS1_TRQ_R {vane_full:.3f}
+# Elevons: roll only. The wing's aerodynamic centre is ~at the CG, so a symmetric elevon
+# mostly changes lift; asked for nose-up it cost so much lift that SITL stalled. Pitch is
+# trimmed by the tail incidence and controlled by the vanes (VT_FW_DIFTHR_EN pitch bit).
 param set-default CA_SV_CS2_TYPE 12       # left elevon (forward-flight matrix)
-param set-default CA_SV_CS2_TRQ_P -0.5
+param set-default CA_SV_CS2_TRQ_P 0
 param set-default CA_SV_CS2_TRQ_Y -0.5
 param set-default CA_SV_CS3_TYPE 12       # right elevon
-param set-default CA_SV_CS3_TRQ_P -0.5
+param set-default CA_SV_CS3_TRQ_P 0
 param set-default CA_SV_CS3_TRQ_Y 0.5
 
 # --- Gazebo outputs ------------------------------------------------------------------
@@ -125,16 +159,24 @@ param set-default MC_AIRMODE 1
 # --- VTOL / forward flight --------------------------------------------------------
 param set-default VT_TYPE 0
 param set-default VT_ELEV_MC_LOCK 1
-# No rudder: fixed-wing yaw goes to the hover matrix (vane yaw) through the differential-thrust path.
-param set-default VT_FW_DIFTHR_EN 1
+# No rudder, and the elevons (on the wing, ~at the CG) mostly change lift, not pitch:
+# fixed-wing yaw and pitch also go to the vanes through the differential-thrust path.
+param set-default VT_FW_DIFTHR_EN 5     # yaw (1) + pitch (4)
 param set-default VT_FW_DIFTHR_S_Y 1
-param set-default VT_ARSP_TRANS {cfg['requirements']['cruise_speed_m_s'] - 4:.0f}
+param set-default VT_FW_DIFTHR_S_P 1
+param set-default VT_ARSP_TRANS {v_min:.1f}
 param set-default VT_F_TRANS_DUR 3
 param set-default VT_B_TRANS_DUR 5
-param set-default FW_AIRSPD_STALL 12
-param set-default FW_AIRSPD_MIN 15
-param set-default FW_AIRSPD_TRIM {cfg['requirements']['cruise_speed_m_s']:.0f}
-param set-default FW_AIRSPD_MAX 28
+param set-default FW_THR_TRIM {fw_thr_trim:.3f}    # cruise drag / max thrust; the PX4 default (0.6) overshoots
+param set-default FW_THR_MAX {min(1.0, 4 * fw_thr_trim):.2f}
+param set-default FW_THR_MIN 0.10      # keep the jet alive: forward-flight pitch comes from the vanes
+param set-default FW_R_LIM 25          # bank limit: a 48 deg loiter bank stalled the wing in SITL
+param set-default NAV_LOITER_RAD 150   # ~20 deg bank at trim speed
+param set-default FW_PSP_OFF {fw_psp_off:.1f}      # cruise trim angle of attack; transition stops at this pitch
+param set-default FW_AIRSPD_STALL {v_stall:.1f}   # 1 g stall from the CLmax of the tables
+param set-default FW_AIRSPD_MIN {v_min:.1f}
+param set-default FW_AIRSPD_TRIM {v_trim:.1f}
+param set-default FW_AIRSPD_MAX {max(30.0, v_trim + 6):.0f}
 # Weathervane side-on (px4/patches/0002): wing edge-on to the wind in hover, so less lean
 # and the wind on a leg axis at touchdown.
 param set-default WV_EN 1
@@ -150,6 +192,8 @@ def main() -> int:
     cfg = config.load(ROOT / "config" / "p1.toml")
     tables = ROOT / "models" / "aero" / cfg["meta"]["name"]
     aero = json.loads((tables / "aero.json").read_text(encoding="utf-8"))
+    ALPHA_TABLE[:] = [tuple(map(float, line.split(","))) for line in
+                      (tables / "airframe_alpha.csv").read_text(encoding="utf-8").splitlines()[1:]]
     rows = [tuple(map(float, line.split(","))) for line in
             (tables / "rotor.csv").read_text(encoding="utf-8").splitlines()[1:]]
     out = ROOT / "px4" / "airframes" / f"{AIRFRAME_ID}_gz_vtol_{cfg['meta']['name']}"

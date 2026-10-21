@@ -36,14 +36,17 @@ param set-default THR_MDL_FAC 1           # thrust ~ (motor speed)^2
 
 param set-default CA_SV_CS_COUNT 4
 param set-default CA_SV_CS0_TYPE 12       # vane, pitch axis (hover matrix)
-param set-default CA_SV_CS0_TRQ_P 6.726
+param set-default CA_SV_CS0_TRQ_P 6.260
 param set-default CA_SV_CS1_TYPE 12       # vane, fixed-wing yaw axis = MC roll (hover matrix)
-param set-default CA_SV_CS1_TRQ_R 6.726
+param set-default CA_SV_CS1_TRQ_R 6.260
+# Elevons: roll only. The wing's aerodynamic centre is ~at the CG, so a symmetric elevon
+# mostly changes lift; asked for nose-up it cost so much lift that SITL stalled. Pitch is
+# trimmed by the tail incidence and controlled by the vanes (VT_FW_DIFTHR_EN pitch bit).
 param set-default CA_SV_CS2_TYPE 12       # left elevon (forward-flight matrix)
-param set-default CA_SV_CS2_TRQ_P -0.5
+param set-default CA_SV_CS2_TRQ_P 0
 param set-default CA_SV_CS2_TRQ_Y -0.5
 param set-default CA_SV_CS3_TYPE 12       # right elevon
-param set-default CA_SV_CS3_TRQ_P -0.5
+param set-default CA_SV_CS3_TRQ_P 0
 param set-default CA_SV_CS3_TRQ_Y 0.5
 
 # --- Gazebo outputs ------------------------------------------------------------------
@@ -87,16 +90,24 @@ param set-default MC_AIRMODE 1
 # --- VTOL / forward flight --------------------------------------------------------
 param set-default VT_TYPE 0
 param set-default VT_ELEV_MC_LOCK 1
-# No rudder: fixed-wing yaw goes to the hover matrix (vane yaw) through the differential-thrust path.
-param set-default VT_FW_DIFTHR_EN 1
+# No rudder, and the elevons (on the wing, ~at the CG) mostly change lift, not pitch:
+# fixed-wing yaw and pitch also go to the vanes through the differential-thrust path.
+param set-default VT_FW_DIFTHR_EN 5     # yaw (1) + pitch (4)
 param set-default VT_FW_DIFTHR_S_Y 1
-param set-default VT_ARSP_TRANS 16
+param set-default VT_FW_DIFTHR_S_P 1
+param set-default VT_ARSP_TRANS 19.1
 param set-default VT_F_TRANS_DUR 3
 param set-default VT_B_TRANS_DUR 5
-param set-default FW_AIRSPD_STALL 12
-param set-default FW_AIRSPD_MIN 15
-param set-default FW_AIRSPD_TRIM 20
-param set-default FW_AIRSPD_MAX 28
+param set-default FW_THR_TRIM 0.074    # cruise drag / max thrust; the PX4 default (0.6) overshoots
+param set-default FW_THR_MAX 0.30
+param set-default FW_THR_MIN 0.10      # keep the jet alive: forward-flight pitch comes from the vanes
+param set-default FW_R_LIM 25          # bank limit: a 48 deg loiter bank stalled the wing in SITL
+param set-default NAV_LOITER_RAD 150   # ~20 deg bank at trim speed
+param set-default FW_PSP_OFF 7.0      # cruise trim angle of attack; transition stops at this pitch
+param set-default FW_AIRSPD_STALL 17.4   # 1 g stall from the CLmax of the tables
+param set-default FW_AIRSPD_MIN 19.1
+param set-default FW_AIRSPD_TRIM 21.8
+param set-default FW_AIRSPD_MAX 30
 # Weathervane side-on (px4/patches/0002): wing edge-on to the wind in hover, so less lean
 # and the wind on a leg axis at touchdown.
 param set-default WV_EN 1
