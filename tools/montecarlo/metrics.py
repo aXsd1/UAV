@@ -70,13 +70,15 @@ def tilt_deg(f: Flight):
     return f.t(att), np.degrees(2 * np.arcsin(np.clip(np.sqrt(att["q[1]"] ** 2 + att["q[2]"] ** 2), 0, 1)))
 
 
-def landing(f: Flight):
+def landing(f: Flight, t_from: float = 0.0):
+    """Landing state at the end of the log; max_descent_m_s is the fastest sink rate after t_from."""
     ld = f.topic("vehicle_land_detected")
     t, tilt = tilt_deg(f)
     lp = f.topic("vehicle_local_position")
+    after = f.t(lp) >= t_from
     return {"landed": bool(ld["landed"][-1]), "final_tilt_deg": float(tilt[-1]),
             "max_tilt_deg": float(tilt.max()),
-            "impact_vz_m_s": float(np.max(lp["vz"][-int(len(lp["vz"]) * 0.2):]))}
+            "max_descent_m_s": float(np.max(lp["vz"][after])) if after.any() else float("nan")}
 
 
 def nav_states(f: Flight):

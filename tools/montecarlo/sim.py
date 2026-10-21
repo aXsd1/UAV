@@ -50,7 +50,7 @@ class Sim:
         self.proc = None
 
     # -- lifecycle --------------------------------------------------------------------
-    def start(self, timeout: float = 120.0):
+    def start(self, timeout: float = 240.0):
         self.stop()
         if self.dir.exists():
             shutil.rmtree(self.dir)
@@ -139,12 +139,16 @@ class Sim:
                 self.sleep_sim(ramp_s / steps)
 
     def sim_time(self) -> float:
-        r = subprocess.run(["gz", "topic", "-e", "-n", "1", "-t", f"/world/{self.world}/stats"],
-                           env=self.env, capture_output=True, text=True, timeout=20)
-        m = re.search(r"sim_time\s*\{\s*sec:\s*(\d+)(?:\s*nsec:\s*(\d+))?", r.stdout)
-        if not m:
-            raise SimError("no sim time from Gazebo")
-        return int(m.group(1)) + int(m.group(2) or 0) * 1e-9
+        for _ in range(3):  # gz transport discovery can stall under load
+            try:
+                r = subprocess.run(["gz", "topic", "-e", "-n", "1", "-t", f"/world/{self.world}/stats"],
+                                   env=self.env, capture_output=True, text=True, timeout=45)
+            except subprocess.TimeoutExpired:
+                continue
+            m = re.search(r"sim_time\s*\{\s*sec:\s*(\d+)(?:\s*nsec:\s*(\d+))?", r.stdout)
+            if m:
+                return int(m.group(1)) + int(m.group(2) or 0) * 1e-9
+        raise SimError("no sim time from Gazebo")
 
     def sleep_sim(self, seconds: float):
         target = self.sim_time() + seconds
@@ -158,8 +162,9 @@ class Sim:
         """Gazebo ground truth position of the vehicle (ENU, m)."""
         r = subprocess.run(["gz", "model", "-m", self.model, "-p"], env=self.env, capture_output=True,
                            text=True, timeout=20)
-        rows = re.findall(r"\[([-\d.e ]+)\]", r.stdout)
-        return [float(v) for v in rows[0].split()] if rows else None
+        # first "[x y z]" row; "Model: [4]" (the entity id) must not match
+        m = re.search(r"\[\s*(-?[\d.e+-]+)\s+(-?[\d.e+-]+)\s+(-?[\d.e+-]+)\s*\]", r.stdout)
+        return [float(v) for v in m.groups()] if m else None
 
     def wait_for(self, predicate, timeout_sim: float, poll_sim: float = 1.0) -> bool:
         t_end = self.sim_time() + timeout_sim

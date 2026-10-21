@@ -4,7 +4,8 @@ them on a fresh SITL instance and returns parameters, metrics and a pass flag.
 Pass criteria (simulation doc, "Test senaryoları"):
   hover_wind      : <= 8 m/s mean wind: hold error < 0.5 m (8-12 m/s recorded, no criterion) + upright landing
   transition      : front < 5 s and < 5 m altitude loss, back completes, upright landing ("sıfır kayıp")
-  actuator_failure: safe landing or controlled descent: on the ground, upright, or impact < 4 m/s
+  actuator_failure: safe landing (upright) or controlled descent (sink rate after the failure < 4 m/s);
+                    the outcome is recorded as "safe_landing" / "controlled_descent" / "uncontrolled"
   link_loss       : datalink loss -> RTL, lands within 10 m of home, upright
   gnss_loss       : recorded only (the 10 min / < 50 m target needs VIO, not built yet)
   urban_landing   : Karabük city spot, gusty wind: lands within 1.5 m of the target (3 x 3 m), upright
@@ -84,15 +85,18 @@ def actuator_failure(sim: Sim, rng: np.random.Generator):
     sim.wind(*_wind_vec(p["wind_m_s"], p["wind_from_deg"]))
     sim.takeoff(20)
     sim.sleep_sim(5)
+    t_fail = _px4_time(sim)
     sim.publish("failure", "gz.msgs.StringMsg", f'data: "{kind}"')
     sim.sleep_sim(5)
     sim.cmd("commander", "land")           # what an operator / failure detector would command
     landed = sim.wait_for(sim.landed, timeout_sim=60, poll_sim=2.0)
     sim.stop()
     f = M.Flight(sim.ulog())
-    m = {**M.landing(f), "landed_in_time": landed, "nav": M.nav_states(f)[-4:]}
-    ok = (m["landed"] and m["final_tilt_deg"] < 30) or m["impact_vz_m_s"] < 4
-    return p, m, bool(ok)
+    m = {**M.landing(f, t_fail), "landed_in_time": landed, "nav": M.nav_states(f)[-4:]}
+    upright = m["landed"] and m["final_tilt_deg"] < 30
+    m["outcome"] = ("safe_landing" if upright else
+                    "controlled_descent" if m["max_descent_m_s"] < 4 else "uncontrolled")
+    return p, m, m["outcome"] != "uncontrolled"
 
 
 def link_loss(sim: Sim, rng: np.random.Generator):

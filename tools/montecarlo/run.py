@@ -72,12 +72,18 @@ def worker(args):
               run_dir=Path(f"/tmp/mc/{name}_{index}"))
     t0 = time.time()
     rec = {"scenario": name, "index": index, "seed": seed + index}
-    try:
-        params, met, ok = fn(sim, rng)
-        rec.update(params=params, metrics=met, passed=ok)
-    except (SimError, Exception) as e:  # a crash of the harness is recorded, not a vehicle loss
-        rec.update(error=f"{type(e).__name__}: {e}", trace=traceback.format_exc()[-800:], passed=False)
-        sim.stop()
+    for attempt in (1, 2):  # a harness failure (not a vehicle failure) is retried once with the same seed
+        rng = np.random.default_rng(seed + index)
+        try:
+            params, met, ok = fn(sim, rng)
+            rec.update(params=params, metrics=met, passed=ok, attempts=attempt)
+            rec.pop("error", None)
+            rec.pop("trace", None)
+            break
+        except Exception as e:  # recorded as a harness error, never as a vehicle loss
+            rec.update(error=f"{type(e).__name__}: {e}", trace=traceback.format_exc()[-800:], passed=False,
+                       attempts=attempt)
+            sim.stop()
     rec["wall_s"] = round(time.time() - t0, 1)
     with open(out_dir / "results.jsonl", "a", encoding="utf-8") as fh:  # O_APPEND: one line per run
         fh.write(json.dumps(rec, ensure_ascii=False, default=str) + "\n")
