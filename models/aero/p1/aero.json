@@ -1,0 +1,83 @@
+{
+  "format_version": 1,
+  "generator": "tools.aerogen 0.1.0",
+  "config": {
+    "file": "p1.toml",
+    "sha256": "e14c6c55a32ba084c56b5c5e6e0b1815a92a19a2e0b5a18f6d10973d33494696"
+  },
+  "frame": "body FRD (x nose, y right wing, z down); stations aft from nose",
+  "reference": {
+    "area_m2": 0.6,
+    "span_m": 1.5,
+    "chord_m": 0.4,
+    "moment_reference_station_m": 0.47
+  },
+  "mass": {
+    "mass_kg": 12.0,
+    "cg_station_m": 0.469833,
+    "inertia_kg_m2": {
+      "Ixx": 0.244303,
+      "Iyy": 0.879049,
+      "Izz": 1.06663
+    }
+  },
+  "tables": {
+    "airframe_alpha.csv": "propeller-off airframe, beta=0; CL/CD wind axes, Cm about reference station",
+    "airframe_beta.csv": "propeller-off airframe, alpha=0; CY body y, Cl/Cn about reference station, span-normalised",
+    "rotor.csv": "per rotor: T = CT rho n^2 D^4, Q = CQ rho n^2 D^5, J = V_axial/(n D), n in rev/s",
+    "vane.csv": "jet side force / unit thrust and axial thrust loss / unit thrust vs vane deflection"
+  },
+  "derivatives_per_rad": {
+    "CLq": 1.44863,
+    "Cmq": -2.46267,
+    "Clp": -0.63046,
+    "Cnr": -0.175123,
+    "CYr": 0.386301,
+    "Clr": 0.200136,
+    "Cnp": -0.100068,
+    "CL_elevon_sym": 1.67972,
+    "Cm_elevon_sym": -0.340573,
+    "Cl_elevon_diff": 0.482919,
+    "elevon_flap_effectiveness": 0.608998
+  },
+  "derivative_notes": "damping uses hat rates q c/(2V), p b/(2V), r b/(2V); elevon_sym: both trailing edges down positive; elevon_diff = (left - right)/2, positive rolls right",
+  "rotor": {
+    "diameter_m": 0.3,
+    "max_rpm": 10000.0,
+    "upper_station_m": 0.08,
+    "lower_station_m": 0.16,
+    "spin": "upper CCW, lower CW seen from the nose (assumption)",
+    "rotor_inertia_kg_m2": 0.0002,
+    "motor_time_constant_s": 0.05,
+    "disk_area_m2": 0.0678584,
+    "exit_area_ratio": 1.0
+  },
+  "vanes": {
+    "axes": [
+      "pitch",
+      "yaw"
+    ],
+    "exit_station_m": 0.28,
+    "max_deflection_deg": 20.0,
+    "servo_rate_deg_s": 300.0,
+    "deadband_deg": 0.5
+  },
+  "elevons": {
+    "max_deflection_deg": 25.0
+  },
+  "hover_allocation": {
+    "rpm": 8451.54,
+    "shaft_power_w": 3128.94,
+    "rotor_torque_nm": 1.76768,
+    "vane_arm_m": 0.189833,
+    "pitch_yaw_moment_per_vane_rad_nm": 17.8716,
+    "thrust_axis_moment_per_rpm_split_nm": 0.000836618
+  },
+  "cruise_trim": {
+    "alpha_deg": 8.29222,
+    "CL": 0.800543,
+    "CD": 0.0907717,
+    "rpm": 5478.38
+  },
+  "static_margin": 0.101928
+}

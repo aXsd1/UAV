@@ -1,0 +1,21 @@
+__pycache__/
+*.pyc
+.venv/
+*.egg-info/
+
+# ROS 2 colcon
+ros2_ws/build/
+ros2_ws/install/
+ros2_ws/log/
+
+# C++ builds
+build/
+
+# Large downloaded data and external checkouts
+world/data/
+external/
+
+# Sim outputs
+*.ulg
+runs/
+logs/

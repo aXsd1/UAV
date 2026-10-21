@@ -1,0 +1,136 @@
+# P1 — yarım ölçekli elektrikli prototip.
+# Bu dosya P1 parametrelerinin TEK kaynağıdır: aero üreteci (tools/aerogen),
+# Gazebo eklentisi, Isaac Lab ortamı ve PX4 yapılandırması değerleri buradan
+# (ya da buradan üretilen models/aero/p1/ tablolarından) okur. Elle kopyalamayın.
+#
+# Birimler SI; açılar derece (adı _deg ile biter). İstasyonlar (station_m)
+# burundan kuyruğa doğru metre cinsinden ölçülür. Gövde ekseni sabit kanat
+# FRD'dir: x burun yönü, y sağ kanat, z aşağı (askıda x yukarı bakar).
+# Kaynak: Tasarım dokümanı (2026-10-11). "VARSAYIM" yazan değerler dokümanda
+# yoktur, el hesabı için seçilmiştir; CAD/CFD/test geldikçe güncellenecek.
+
+[meta]
+name = "p1"
+description = "V-BAT benzeri tail-sitter, koaksiyel kanallı fan, itki vektörleme, 12S elektrik"
+config_version = 1
+
+[environment]
+air_density_kg_m3 = 1.225   # ISA deniz seviyesi
+gravity_m_s2 = 9.80665
+
+[mass]
+mtow_kg = 12.0
+# Bileşenler tasarım dokümanındaki ağırlık tablosundan. İstasyonlar ve kutu
+# boyutları (size_m = [x, y, z], ataleti kaba tahmin için) VARSAYIM.
+# Batarya istasyonu kızakla ayarlanır; statik marjı bu belirler.
+components = [
+  { name = "fuselage",   mass_kg = 1.50, station_m = 0.65, size_m = [1.30, 0.14, 0.14] },
+  { name = "duct",       mass_kg = 0.60, station_m = 0.13, size_m = [0.25, 0.34, 0.34] },
+  { name = "wing",       mass_kg = 1.00, station_m = 0.56, size_m = [0.40, 1.50, 0.04] },
+  { name = "tail",       mass_kg = 0.50, station_m = 1.15, size_m = [0.15, 0.50, 0.50] },
+  { name = "battery",    mass_kg = 3.30, station_m = 0.46, size_m = [0.25, 0.10, 0.10] },
+  { name = "propulsion", mass_kg = 1.60, station_m = 0.12, size_m = [0.15, 0.10, 0.10] },
+  { name = "payload",    mass_kg = 1.00, station_m = 0.42, size_m = [0.12, 0.12, 0.12] },
+  { name = "avionics",   mass_kg = 0.80, station_m = 0.60, size_m = [0.20, 0.08, 0.08] },
+  { name = "companion",  mass_kg = 0.70, station_m = 0.52, size_m = [0.15, 0.10, 0.08] },
+  { name = "margin",     mass_kg = 0.60, station_m = 0.60, size_m = [0.20, 0.10, 0.10] },
+  { name = "vanes",      mass_kg = 0.40, station_m = 0.29, size_m = [0.08, 0.30, 0.30] },
+]
+
+[aero]
+# Tablolardaki momentlerin referans noktası (tasarım ağırlık merkezi).
+# Dinamik modeller gerçek AM'ye kendileri taşır; AM rastgeleleştirmesi böyle çalışır.
+reference_station_m = 0.47
+
+[wing]
+span_m = 1.5
+area_m2 = 0.6                 # ortalama veter = alan / açıklık = 0,40 m (dikdörtgen)
+sweep_deg = 0.0               # VARSAYIM
+quarter_chord_station_m = 0.48  # VARSAYIM; statik marjı ~%10 yapacak şekilde seçildi
+airfoil_lift_slope_per_rad = 6.0      # VARSAYIM (2B, ~0,95·2π)
+airfoil_zero_lift_alpha_deg = -4.0    # VARSAYIM (kamburlu profil)
+airfoil_cm0 = -0.08                   # VARSAYIM (çeyrek veter etrafında)
+cd0 = 0.010                   # VARSAYIM, kanat profil sürüklemesi
+oswald_efficiency = 0.80      # VARSAYIM
+stall_alpha_deg = 15.0        # VARSAYIM
+stall_blend_rate = 50.0       # Beard & McLain sigmoid keskinliği (1/rad)
+flat_plate_cd90 = 1.20        # VARSAYIM, düşük en-boy oranlı levha
+
+[elevons]
+chord_fraction = 0.25         # VARSAYIM
+span_start_fraction = 0.20    # yarı açıklık oranı, VARSAYIM
+span_end_fraction = 0.95      # VARSAYIM
+max_deflection_deg = 25.0     # VARSAYIM
+
+[tail]
+# Artı (+) kuyruk: 2 yatay + 2 dikey kanatçık; uçları iniş ayağı.
+fin_area_m2 = 0.045           # tek kanatçık, VARSAYIM
+fin_span_m = 0.25             # tek kanatçık (gövdeden uca), VARSAYIM
+quarter_chord_station_m = 1.15  # VARSAYIM
+dynamic_pressure_ratio = 0.90   # VARSAYIM
+lift_slope_2d_per_rad = 6.0     # simetrik profil
+cd0 = 0.010
+oswald_efficiency = 0.80
+stall_alpha_deg = 18.0
+flat_plate_cd90 = 1.15
+
+[body]
+# Gövde + kanal dış yüzeyi + kuyruk ayakları. Kanal momentum sürüklemesi
+# burada DEĞİL, itki modelinde (dinamik eklenti) hesaplanır.
+parasite_cd0 = 0.011          # kanat alanına göre, VARSAYIM
+crossflow_cd = 1.10           # silindir çapraz akış, VARSAYIM
+side_area_m2 = 0.27           # gövde (1,3 × 0,14) + kanal (0,25 × 0,34), VARSAYIM
+side_area_centroid_station_m = 0.52
+
+[duct]
+inner_diameter_m = 0.30
+hub_diameter_m = 0.06         # VARSAYIM
+exit_area_ratio = 1.0         # çıkış alanı / disk alanı; 1,0 → ideal güçte √2 kazanç
+exit_station_m = 0.28         # VARSAYIM
+
+[rotors]
+# Kanal içinde aynı eksende zıt dönen iki pervane; her biri ayrı motor.
+# VARSAYIM: alt pervanenin hatvesi eşit devirde torklar dengede olacak
+# şekilde seçilir; tablolar her iki pervane için aynıdır.
+count = 2
+diameter_m = 0.30
+max_rpm = 10000.0             # VARSAYIM (uç hızı ~157 m/s)
+max_thrust_to_weight = 1.4    # dokümandaki asgari askı T/W
+zero_thrust_advance_ratio = 1.0  # VARSAYIM, J = V/(nD) itkinin sıfırlandığı değer
+figure_of_merit = 0.75
+coaxial_power_loss = 0.06     # alt pervanenin üst pervane akışındaki kaybı
+upper_station_m = 0.08        # VARSAYIM
+lower_station_m = 0.16        # VARSAYIM
+rotor_inertia_kg_m2 = 2.0e-4  # pervane + rotor, VARSAYIM
+motor_time_constant_s = 0.05  # birinci derece gecikme, VARSAYIM
+
+[motors]
+count = 2
+peak_power_w = 2200.0         # her biri
+efficiency = 0.85             # motor + ESC, VARSAYIM
+
+[vanes]
+# Kanal çıkışında 2 eksenli vektörleme vane'leri: bir set yunuslama, bir set sapma.
+axes = ["pitch", "yaw"]
+max_deflection_deg = 20.0     # VARSAYIM
+stall_deflection_deg = 25.0   # VARSAYIM
+turning_efficiency = 0.80     # jet sapması / vane sapması, VARSAYIM
+servo_rate_deg_s = 300.0      # VARSAYIM
+deadband_deg = 0.5            # VARSAYIM
+
+[battery]
+cells_series = 12
+energy_wh = 660.0
+usable_fraction = 0.85        # VARSAYIM
+
+[requirements]
+cruise_speed_m_s = 20.0
+cruise_cl_doc = 0.80
+cruise_lift_to_drag_doc = 9.0
+endurance_min = 60.0
+hover_time_per_sortie_s = 120.0   # kalkış + iniş + geçişler, VARSAYIM
+hover_wind_m_s = 8.0
+static_margin_min = 0.08
+static_margin_max = 0.12
+hover_power_doc_w = 2200.0
+cruise_power_doc_w = 480.0
