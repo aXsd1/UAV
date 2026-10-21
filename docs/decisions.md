@@ -20,7 +20,5 @@ Kısa kayıtlar; gerekçenin ayrıntısı tasarım ve simülasyon dokümanların
 ## Açık sorular
 
 - Test sahası seçilmedi; varsayılan 10 × 10 km açık alan + şehir kenarı.
-- Tasarım dokümanındaki askı gücü (~2,2 kW) FM ve koaksiyel kaybı içermiyor
-  gibi görünüyor; üretecin hesabı 12,7 kg ile ~3,4 kW mil gücü. Bkz. `models/aero/p1/sizing_report.md`.
 - Ulaşılabilir seyir tam 40 dk (604 Wh kullanılabilir); hedefin alt sınırında, yedek enerji payı yok. Paket kütlesi tartılınca güncellenmeli.
 - Askıda vane yunuslama yetkisi 8 m/s yan rüzgârda sınırda (vane-AM kolu 0,19 m).

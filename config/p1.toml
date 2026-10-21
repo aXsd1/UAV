@@ -141,5 +141,5 @@ hover_time_per_sortie_s = 120.0   # kalkış + iniş + geçişler, VARSAYIM
 hover_wind_m_s = 8.0
 static_margin_min = 0.08
 static_margin_max = 0.12
-hover_power_doc_w = 2200.0
-cruise_power_doc_w = 480.0
+hover_power_doc_w = 3400.0      # mil gücü, doküman 2026-10-21
+cruise_power_doc_w = 700.0      # elektrik, doküman 2026-10-21

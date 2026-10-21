@@ -3,7 +3,7 @@
   "generator": "tools.aerogen 0.1.0",
   "config": {
     "file": "p1.toml",
-    "sha256": "52857174c515f026822434585f80223e38987f8592e4259186d3326d1be1ccdc"
+    "sha256": "7de03cf2bb2a5a80ad6dbe5df82402333d98004936140d2c0b259564d7fe771f"
   },
   "frame": "body FRD (x nose, y right wing, z down); stations aft from nose",
   "reference": {
