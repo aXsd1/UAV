@@ -3,15 +3,17 @@
 Bu adımlar 2026-10-21'de bu bilgisayarda (Windows 10 Pro, WSL2 Ubuntu 24.04,
 PX4 v1.17.0, Gazebo Harmonic) denendi. "Denendi" yazmayanlar denenmedi.
 
-## 1. Ubuntu'yu (WSL) açın
+## 1. Ubuntu'yu (WSL) root olarak açın
 
-Başlat menüsünde **Ubuntu 24.04**'e tıklayın ya da PowerShell'de:
+PX4 kurulumu root kullanıcısının klasöründe (`/root/uav`). Başlat menüsündeki
+**Ubuntu 24.04** kısayolu artık `erina` kullanıcısıyla açılır ve bu kurulumu
+göremez; o yüzden PowerShell'den root olarak açın:
 
 ```powershell
-wsl -d Ubuntu-24.04
+wsl -d Ubuntu-24.04 -u root
 ```
 
-Terminal `root@...:~#` ile açılır (şimdilik root kullanıcısı; parola yok).
+Terminal `root@...#` ile açılır.
 
 ## 2. Proje klasörüne gidin
 
@@ -35,7 +37,7 @@ bash px4/run_sitl.sh
 Tek komutla, doğrudan PowerShell'den de başlatılabilir:
 
 ```powershell
-wsl -d Ubuntu-24.04 -- bash /mnt/c/Users/erina/Desktop/Yeageth/workplace/UAV/px4/run_sitl.sh
+wsl -d Ubuntu-24.04 -u root -- bash /mnt/c/Users/erina/Desktop/Yeageth/workplace/UAV/px4/run_sitl.sh
 ```
 
 ## 4. Aracı uçurun (`pxh>` istemine yazın)
@@ -58,7 +60,7 @@ Gazebo'da aracı takip etmek için sol paneldeki varlık listesinde
 
 ## 5. Rüzgâr ekleyin — denendi
 
-Simülasyon açıkken **ikinci bir Ubuntu terminali** açın ve:
+Simülasyon açıkken **ikinci bir terminal** açın (`wsl -d Ubuntu-24.04 -u root`) ve:
 
 ```bash
 gz topic -t /model/vtol_p1_0/wind -m gz.msgs.Vector3d -p "x: -8"
@@ -106,5 +108,6 @@ güvenlik duvarı izin isteyebilir.
 | Belirti | Çözüm |
 |---|---|
 | Gazebo penceresi açılmıyor | `wsl --update` (PowerShell) ve WSL'yi yeniden başlatın: `wsl --shutdown` |
+| `No such file or directory` / `~/uav` bulunamadı | Ubuntu `erina` kullanıcısıyla açılmış; `wsl -d Ubuntu-24.04 -u root` ile açın |
 | `Ready for takeoff` gelmiyor | Önceki oturum açık kalmış olabilir: `pkill -x px4; pkill -f "gz sim"` ve tekrar başlatın |
 | Config değişti (`config/p1.toml`) | Windows'ta `python -m tools.aerogen`, sonra Ubuntu'da `bash px4/install.sh` |
