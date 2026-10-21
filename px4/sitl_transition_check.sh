@@ -4,6 +4,7 @@
 # (front transition < 5 s, < 5 m altitude loss).
 #   px4/sitl_transition_check.sh [cruise_seconds]
 #   WIND=5 px4/sitl_transition_check.sh 40
+#   WORLD=karabuk ALT=80 px4/sitl_transition_check.sh 25   # higher takeoff over terrain
 set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WORK="${WORK:-$HOME/uav}"
@@ -14,7 +15,11 @@ LOG=/tmp/px4_sitl.log
 export GZ_SIM_SYSTEM_PLUGIN_PATH="$WORK/build/vtol_dynamics${GZ_SIM_SYSTEM_PLUGIN_PATH:+:$GZ_SIM_SYSTEM_PLUGIN_PATH}"
 export HEADLESS=1 PX4_SYS_AUTOSTART=4050 PX4_SIM_MODEL=gz_vtol_p1 PX4_GZ_WORLD="${WORLD:-default}"
 
-cleanup() { pkill -x px4 2>/dev/null; pkill -f "gz sim" 2>/dev/null; sleep 1; }
+cleanup() {
+  pkill -x px4 2>/dev/null; pkill -f "gz sim" 2>/dev/null; sleep 1
+  # a killed PX4 leaves its lock/socket behind and the next start exits with "already running"
+  pgrep -x px4 >/dev/null || rm -f /tmp/px4_lock-* /tmp/px4-sock-*
+}
 cleanup
 rm -rf "$B/rootfs/eeprom" "$B/rootfs/parameters"*.bson 2>/dev/null
 cd "$B/rootfs"
@@ -47,10 +52,10 @@ sample() {
     "$(field in_transition_mode <<<"$st")" "$(awk '/q:/{print $2,$3,$4,$5; exit}' <<<"$att")"
 }
 
-cmd param set MIS_TAKEOFF_ALT 30 >/dev/null
+cmd param set MIS_TAKEOFF_ALT "${ALT:-30}" >/dev/null
 cmd commander arm -f | tail -1
 cmd commander takeoff | tail -1
-for k in $(seq 1 12); do sleep 2; sample takeoff; done
+for k in $(seq 1 $(( 12 * ${ALT:-30} / 30 ))); do sleep 2; sample takeoff; done
 
 echo "--- front transition"
 cmd commander transition | tail -1
@@ -60,7 +65,7 @@ echo "--- back transition"
 cmd commander transition | tail -1
 for k in $(seq 1 20); do sleep 0.5; sample mc; done
 cmd commander land | tail -1
-for k in $(seq 1 25); do sleep 2; sample land; done
+for k in $(seq 1 $(( 25 * ${ALT:-30} / 30 ))); do sleep 2; sample land; done   # ~1.5 m/s, 0.5 m/s near the ground
 
 cleanup
 echo "--- metrics"

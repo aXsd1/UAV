@@ -74,6 +74,20 @@ gz topic -t /model/vtol_p1_0/wind -m gz.msgs.Vector3d -p "x: 0"
 
 Araç rüzgârda kanat açıklığını rüzgâra çevirir (weathervane) ve hafifçe yatar.
 
+
+## 5b. Karabük haritasında uçun — denendi
+
+Gerçek arazi (Copernicus DEM) ve 3313 bina (OpenStreetMap) içeren 10 × 10 km
+Karabük dünyası. Kalkış noktası 41,1639 K / 32,6443 D, 275 m; en yakın bina 645 m.
+
+```bash
+WORLD=karabuk bash px4/run_sitl.sh
+```
+
+PX4'ün GPS'i gerçek koordinatları görür. Kalkış noktasının 300 m çevresinde arazi
+47 m'ye kadar yükseldiği için geçiş denemelerinde `param set MIS_TAKEOFF_ALT 80`
+kullanın. Dünyayı yeniden üretmek için: `world/README.md`.
+
 ## 6. Otomatik testler (pencerisiz) — denendi
 
 Pencere açmadan uçuş yapıp sonucu yazdırırlar:
@@ -83,6 +97,7 @@ bash px4/sitl_hover_check.sh 20
 WIND=8 WIND_RAMP=3 bash px4/sitl_hover_check.sh 30
 bash px4/sitl_transition_check.sh 25
 WIND=5 bash px4/sitl_transition_check.sh 25
+WORLD=karabuk ALT=80 bash px4/sitl_transition_check.sh 25
 ```
 
 Sonda `VERDICT: PASS` / `FAIL` yazar. Uçuş kayıtları (`.ulg`):

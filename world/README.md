@@ -11,12 +11,16 @@ WORLD=karabuk bash px4/run_sitl.sh
 
 - `fetch`: DEM penceresi AWS'deki bulut uyumlu GeoTIFF'ten yalnız gereken baytlar
   okunarak, OSM verisi Overpass API'den indirilir (`world/data/`, repoya girmez).
-- `build`: 16 bit yükseklik haritası, tüm binalar için tek OBJ ağ (yükseklik OSM
+- `build`: arazi üçgen ağı (321 × 321, ~31 m; Gazebo heightmap'inde DART çarpışma
+  yüzeyi görselden ~9 m yukarıda kaldığı için ağ kullanılıyor), tüm binalar için tek OBJ ağ (yükseklik OSM
   etiketinden, yoksa 9 m), yollar için görsel şeritler ve dünya SDF'i
   (`world/build/<ad>/`, repoya girmez). `spherical_coordinates` Gazebo
   orijinini gerçek konuma koyar; PX4'ün GNSS'i gerçek koordinatları görür.
 
 Varsayılan bölge: Karabük çevresi, 10 × 10 km (şehir merkezi, vadiler, açık arazi).
+Kalkış noktası 41,1639 / 32,6443 (275 m, eğim < 1°, en yakın bina 645 m).
+Durum (2026-10-21): DEM ve 3313 bina indirildi; yollar Overpass yedek sunucusu
+zaman aşımına uğradığı için henüz yok.
 Test sahası seçilince kendi fotogrametri uçuşumuzla (OpenDroneMap, 2–5 cm) dijital
 ikiz eklenecek.
 

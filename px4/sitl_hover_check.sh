@@ -14,7 +14,11 @@ LOG=/tmp/px4_sitl.log
 export GZ_SIM_SYSTEM_PLUGIN_PATH="$WORK/build/vtol_dynamics${GZ_SIM_SYSTEM_PLUGIN_PATH:+:$GZ_SIM_SYSTEM_PLUGIN_PATH}"
 export HEADLESS=1 PX4_SYS_AUTOSTART=4050 PX4_SIM_MODEL=gz_vtol_p1 PX4_GZ_WORLD="${WORLD:-default}"
 
-cleanup() { pkill -x px4 2>/dev/null; pkill -f "gz sim" 2>/dev/null; sleep 1; }
+cleanup() {
+  pkill -x px4 2>/dev/null; pkill -f "gz sim" 2>/dev/null; sleep 1
+  # a killed PX4 leaves its lock/socket behind and the next start exits with "already running"
+  pgrep -x px4 >/dev/null || rm -f /tmp/px4_lock-* /tmp/px4-sock-*
+}
 cleanup
 rm -rf "$B/rootfs/eeprom" "$B/rootfs/parameters"*.bson 2>/dev/null
 cd "$B/rootfs"
@@ -68,7 +72,12 @@ echo "$pose"
 q=$(cmd listener vehicle_attitude -n 1 | awk '/q:/{gsub(/[\[\],]/,""); print $2,$3,$4,$5; exit}')
 tilt=$(awk -v q="$q" 'BEGIN{split(q,a," "); printf "%.1f", 2*atan2(sqrt(a[2]^2+a[3]^2), sqrt(1-a[2]^2-a[3]^2))*57.2958}')
 echo "final tilt ${tilt} deg"
-awk -v t="$tilt" 'BEGIN{exit !(t < 30)}' && echo "VERDICT: landed upright" || echo "VERDICT: TIPPED OVER"
+landed=$(cmd listener vehicle_land_detected -n 1 | awk '$1=="landed:"{print $2; exit}')
+gz_z=$(awk '{gsub(/[\[\]]/,""); print $3}' <<<"$(head -1 <<<"$pose")")
+echo "land detector: landed=${landed}, Gazebo height ${gz_z} m (spawn ~0.86)"
+if ! awk -v t="$tilt" 'BEGIN{exit !(t < 30)}'; then echo "VERDICT: TIPPED OVER"
+elif [ "$landed" != "True" ] || ! awk -v z="$gz_z" 'BEGIN{exit !(z < 1.8)}'; then echo "VERDICT: NOT LANDED"
+else echo "VERDICT: landed upright"; fi
 
 echo "--- warnings/errors from PX4 ---"
 grep -E "WARN|ERROR|fail" "$LOG" | sort | uniq -c | sort -rn | head -20

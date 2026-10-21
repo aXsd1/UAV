@@ -29,6 +29,7 @@ DEM_URL = ("https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_N{
            "Copernicus_DSM_COG_10_N{lat:02d}_00_E{lon:03d}_00_DEM.tif")
 OVERPASS = "https://overpass-api.de/api/interpreter"
 HEIGHTMAP_PX = 513          # Gazebo wants 2^n + 1
+TERRAIN_MESH_N = 321        # terrain mesh grid (~31 m over 10 km, the DEM's own resolution)
 DEFAULT_BUILDING_H = 9.0    # m, ~3 floors when OSM has no height
 FLOOR_H = 3.0
 
@@ -65,6 +66,14 @@ def fetch(bbox):
 
 
 # --- helpers -------------------------------------------------------------------------------
+def read_band(ds) -> np.ndarray:
+    """Band 1 as float64 via raw bytes: Ubuntu's GDAL numpy bridge breaks with pip numpy 2."""
+    from osgeo import gdal
+    band = ds.GetRasterBand(1)
+    raw = band.ReadRaster(0, 0, ds.RasterXSize, ds.RasterYSize, buf_type=gdal.GDT_Float32)
+    return np.frombuffer(raw, dtype=np.float32).reshape(ds.RasterYSize, ds.RasterXSize).astype(float)
+
+
 def write_png16(path: Path, img: np.ndarray):
     """Grayscale 16-bit PNG without extra dependencies."""
     h, w = img.shape
@@ -133,7 +142,7 @@ def build(bbox, origin, name):
     from osgeo import gdal
     lat0, lon0 = origin
     ds = gdal.Open(str(DATA / "dem.tif"))
-    z = ds.GetRasterBand(1).ReadAsArray().astype(float)
+    z = read_band(ds)
     gt = ds.GetGeoTransform()
     lons = gt[0] + (np.arange(z.shape[1]) + 0.5) * gt[1]
     lats = gt[3] + (np.arange(z.shape[0]) + 0.5) * gt[5]
@@ -164,7 +173,12 @@ def build(bbox, origin, name):
     write_png16(out / "terrain.png", np.round((hz - zmin) / (zmax - zmin) * 65535).astype(np.uint16))
 
     # OSM -> meshes.
-    osm = json.loads((DATA / "osm.json").read_text(encoding="utf-8"))
+    osm_path = DATA / "osm.json"
+    if osm_path.exists():
+        osm = json.loads(osm_path.read_text(encoding="utf-8"))
+    else:
+        print("no OSM data (world/data/osm.json): terrain only")
+        osm = {"elements": []}
     bv, bf, rv, rf = [], [], [], []
     n_buildings = n_roads = 0
     for el in osm.get("elements", []):
@@ -209,12 +223,56 @@ def build(bbox, origin, name):
             n_roads += 1
 
     def write_obj(path, verts, faces):
+        # Per-face normals: Gazebo's DART/ODE mesh loader segfaults on an OBJ without them.
+        v = np.asarray(verts, dtype=float).reshape(-1, 3)
+        f_idx = np.asarray(faces, dtype=int).reshape(-1, 3)
+        nrm = np.cross(v[f_idx[:, 1]] - v[f_idx[:, 0]], v[f_idx[:, 2]] - v[f_idx[:, 0]])
+        nrm /= np.maximum(np.linalg.norm(nrm, axis=1, keepdims=True), 1e-12)
         with open(path, "w", encoding="ascii") as f:
-            f.writelines(f"v {vx:.2f} {vy:.2f} {vz:.2f}\n" for vx, vy, vz in verts)
-            f.writelines(f"f {a + 1} {b + 1} {c + 1}\n" for a, b, c in faces)
+            f.writelines(f"v {vx:.2f} {vy:.2f} {vz:.2f}\n" for vx, vy, vz in v)
+            f.writelines(f"vn {nx:.4f} {ny:.4f} {nz:.4f}\n" for nx, ny, nz in nrm)
+            f.writelines(f"f {a + 1}//{k + 1} {b + 1}//{k + 1} {c + 1}//{k + 1}\n"
+                         for k, (a, b, c) in enumerate(f_idx))
+
+    # Terrain as a triangle mesh: with Gazebo's heightmap the DART collision surface sat ~9 m above
+    # the visual one at the origin in SITL (the vehicle "landed" in mid-air), so collide with a mesh.
+    t_lat = np.linspace(n, s, TERRAIN_MESH_N)
+    t_lon = np.linspace(w, e, TERRAIN_MESH_N)
+    tl, tn = np.meshgrid(t_lat, t_lon, indexing="ij")
+    tx, ty = enu(tl, tn, lat0, lon0)
+    tz = terrain_at(tl, tn) - z0
+    tv = np.stack([tx.ravel(), ty.ravel(), tz.ravel()], axis=1)
+    N = TERRAIN_MESH_N
+    r, c = np.meshgrid(np.arange(N - 1), np.arange(N - 1), indexing="ij")
+    i00 = (r * N + c).ravel(); i01 = i00 + 1; i10 = i00 + N; i11 = i10 + 1
+    # rows run north -> south: (i00, i10, i01) is counter-clockwise seen from above
+    tf = np.concatenate([np.stack([i00, i10, i01], 1), np.stack([i01, i10, i11], 1)])
+    write_obj(out / "meshes" / "terrain.obj", tv, tf)
 
     write_obj(out / "meshes" / "buildings.obj", bv, bf)
     write_obj(out / "meshes" / "roads.obj", rv, rf)
+
+    # ODE aborts on an empty collision mesh: add the OSM models only when they have geometry.
+    static_models = ""
+    if bf:
+        static_models += f"""    <model name="buildings">
+      <static>true</static>
+      <link name="link">
+        <collision name="collision"><geometry><mesh><uri>file://{out}/meshes/buildings.obj</uri></mesh></geometry></collision>
+        <visual name="visual"><geometry><mesh><uri>file://{out}/meshes/buildings.obj</uri></mesh></geometry>
+          <material><ambient>0.75 0.72 0.68 1</ambient><diffuse>0.75 0.72 0.68 1</diffuse></material></visual>
+      </link>
+    </model>
+"""
+    if rf:
+        static_models += f"""    <model name="roads">
+      <static>true</static>
+      <link name="link">
+        <visual name="visual"><geometry><mesh><uri>file://{out}/meshes/roads.obj</uri></mesh></geometry>
+          <material><ambient>0.25 0.25 0.27 1</ambient><diffuse>0.25 0.25 0.27 1</diffuse></material></visual>
+      </link>
+    </model>
+"""
 
     sdf = f"""<?xml version="1.0"?>
 <!-- Generated by tools/worldgen.py: Copernicus DEM GLO-30 + OpenStreetMap ({s}, {w}) - ({n}, {e}).
@@ -252,32 +310,12 @@ def build(bbox, origin, name):
     <model name="terrain">
       <static>true</static>
       <link name="link">
-        <collision name="collision"><geometry><heightmap>
-          <uri>file://{out}/terrain.png</uri><size>{size_x:.1f} {size_y:.1f} {zmax - zmin:.2f}</size><pos>{cx:.1f} {cy:.1f} {zmin:.2f}</pos>
-        </heightmap></geometry></collision>
-        <visual name="visual"><geometry><heightmap>
-          <use_terrain_paging>false</use_terrain_paging>
-          <uri>file://{out}/terrain.png</uri><size>{size_x:.1f} {size_y:.1f} {zmax - zmin:.2f}</size><pos>{cx:.1f} {cy:.1f} {zmin:.2f}</pos>
-        </heightmap></geometry>
+        <collision name="collision"><geometry><mesh><uri>file://{out}/meshes/terrain.obj</uri></mesh></geometry></collision>
+        <visual name="visual"><geometry><mesh><uri>file://{out}/meshes/terrain.obj</uri></mesh></geometry>
           <material><ambient>0.45 0.5 0.35 1</ambient><diffuse>0.45 0.5 0.35 1</diffuse></material></visual>
       </link>
     </model>
-    <model name="buildings">
-      <static>true</static>
-      <link name="link">
-        <collision name="collision"><geometry><mesh><uri>file://{out}/meshes/buildings.obj</uri></mesh></geometry></collision>
-        <visual name="visual"><geometry><mesh><uri>file://{out}/meshes/buildings.obj</uri></mesh></geometry>
-          <material><ambient>0.75 0.72 0.68 1</ambient><diffuse>0.75 0.72 0.68 1</diffuse></material></visual>
-      </link>
-    </model>
-    <model name="roads">
-      <static>true</static>
-      <link name="link">
-        <visual name="visual"><geometry><mesh><uri>file://{out}/meshes/roads.obj</uri></mesh></geometry>
-          <material><ambient>0.25 0.25 0.27 1</ambient><diffuse>0.25 0.25 0.27 1</diffuse></material></visual>
-      </link>
-    </model>
-  </world>
+{static_models}  </world>
 </sdf>
 """
     (out / f"{name}.sdf").write_text(sdf, encoding="utf-8")
