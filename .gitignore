@@ -13,6 +13,7 @@ build/
 
 # Large downloaded data and external checkouts
 world/data/
+world/build/
 external/
 
 # Sim outputs

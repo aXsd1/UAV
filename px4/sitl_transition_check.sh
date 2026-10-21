@@ -12,7 +12,7 @@ CRUISE="${1:-30}"
 LOG=/tmp/px4_sitl.log
 
 export GZ_SIM_SYSTEM_PLUGIN_PATH="$WORK/build/vtol_dynamics${GZ_SIM_SYSTEM_PLUGIN_PATH:+:$GZ_SIM_SYSTEM_PLUGIN_PATH}"
-export HEADLESS=1 PX4_SYS_AUTOSTART=4050 PX4_SIM_MODEL=gz_vtol_p1
+export HEADLESS=1 PX4_SYS_AUTOSTART=4050 PX4_SIM_MODEL=gz_vtol_p1 PX4_GZ_WORLD="${WORLD:-default}"
 
 cleanup() { pkill -x px4 2>/dev/null; pkill -f "gz sim" 2>/dev/null; sleep 1; }
 cleanup
