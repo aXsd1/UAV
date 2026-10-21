@@ -3,7 +3,7 @@
   "generator": "tools.aerogen 0.1.0",
   "config": {
     "file": "p1.toml",
-    "sha256": "7de03cf2bb2a5a80ad6dbe5df82402333d98004936140d2c0b259564d7fe771f"
+    "sha256": "490a3d3e4c93e0b3fdf12e2ed6e841e6229c0ca4930b8129506db9af0f28364c"
   },
   "frame": "body FRD (x nose, y right wing, z down); stations aft from nose",
   "reference": {
@@ -52,6 +52,13 @@
     "disk_area_m2": 0.0678584,
     "exit_area_ratio": 1.0
   },
+  "duct": {
+    "center_station_m": 0.13,
+    "exit_station_m": 0.28,
+    "disk_area_m2": 0.0678584,
+    "exit_area_ratio": 1.0
+  },
+  "air_density_kg_m3": 1.225,
   "vanes": {
     "axes": [
       "pitch",

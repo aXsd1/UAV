@@ -1,0 +1,116 @@
+diff --git a/src/modules/control_allocator/VehicleActuatorEffectiveness/ActuatorEffectivenessControlSurfaces.cpp b/src/modules/control_allocator/VehicleActuatorEffectiveness/ActuatorEffectivenessControlSurfaces.cpp
+index f6e216b855..c3b8fbc425 100644
+--- a/src/modules/control_allocator/VehicleActuatorEffectiveness/ActuatorEffectivenessControlSurfaces.cpp
++++ b/src/modules/control_allocator/VehicleActuatorEffectiveness/ActuatorEffectivenessControlSurfaces.cpp
+@@ -198,7 +198,12 @@ void ActuatorEffectivenessControlSurfaces::updateParams()
+ 
+ bool ActuatorEffectivenessControlSurfaces::addActuators(Configuration &configuration)
+ {
+-	for (int i = 0; i < _count; i++) {
++	return addActuators(configuration, 0, _count);
++}
++
++bool ActuatorEffectivenessControlSurfaces::addActuators(Configuration &configuration, int first, int count)
++{
++	for (int i = first; i < first + count && i < _count; i++) {
+ 		int actuator_idx = configuration.addActuator(ActuatorType::SERVOS, _params[i].torque, Vector3f{});
+ 
+ 		if (actuator_idx >= 0) {
+diff --git a/src/modules/control_allocator/VehicleActuatorEffectiveness/ActuatorEffectivenessControlSurfaces.hpp b/src/modules/control_allocator/VehicleActuatorEffectiveness/ActuatorEffectivenessControlSurfaces.hpp
+index 5e64e5a738..4fe8b42e62 100644
+--- a/src/modules/control_allocator/VehicleActuatorEffectiveness/ActuatorEffectivenessControlSurfaces.hpp
++++ b/src/modules/control_allocator/VehicleActuatorEffectiveness/ActuatorEffectivenessControlSurfaces.hpp
+@@ -82,6 +82,8 @@ public:
+ 	virtual ~ActuatorEffectivenessControlSurfaces() = default;
+ 
+ 	bool addActuators(Configuration &configuration);
++	/// Adds surfaces [first, first + count) to the selected matrix.
++	bool addActuators(Configuration &configuration, int first, int count);
+ 
+ 	const char *name() const override { return "Control Surfaces"; }
+ 
+diff --git a/src/modules/control_allocator/VehicleActuatorEffectiveness/ActuatorEffectivenessTailsitterVTOL.cpp b/src/modules/control_allocator/VehicleActuatorEffectiveness/ActuatorEffectivenessTailsitterVTOL.cpp
+index 05fcaf675e..399227ce51 100644
+--- a/src/modules/control_allocator/VehicleActuatorEffectiveness/ActuatorEffectivenessTailsitterVTOL.cpp
++++ b/src/modules/control_allocator/VehicleActuatorEffectiveness/ActuatorEffectivenessTailsitterVTOL.cpp
+@@ -54,24 +54,34 @@ ActuatorEffectivenessTailsitterVTOL::getEffectivenessMatrix(Configuration &confi
+ 		return false;
+ 	}
+ 
++	updateParams();
++	_hover_surface_count = math::constrain((int)_param_ca_ts_mc_sv.get(), 0, _control_surfaces.count());
++
+ 	// MC motors
+ 	configuration.selected_matrix = 0;
+-	// enable MC yaw control if more than 3 rotors
+-	_mc_rotors.enableYawByDifferentialThrust(_mc_rotors.geometry().num_rotors > 3);
++	// enable MC yaw control if more than 3 rotors, or for coaxial rotors whose
++	// pitch/roll come from hover surfaces (rotor torque difference is the only yaw)
++	_mc_rotors.enableYawByDifferentialThrust(_mc_rotors.geometry().num_rotors > 3 || _hover_surface_count > 0);
+ 	const bool mc_rotors_added_successfully = _mc_rotors.addActuators(configuration);
+ 
++	// Hover surfaces (e.g. thrust-vectoring vanes) share the MC matrix with the rotors
++	const bool hover_surfaces_added_successfully = _control_surfaces.addActuators(configuration, 0,
++			_hover_surface_count);
++
+ 	// Control Surfaces
+ 	configuration.selected_matrix = 1;
+ 	_first_control_surface_idx = configuration.num_actuators_matrix[configuration.selected_matrix];
+-	const bool surfaces_added_successfully = _control_surfaces.addActuators(configuration);
++	const bool surfaces_added_successfully = _control_surfaces.addActuators(configuration, _hover_surface_count,
++			_control_surfaces.count() - _hover_surface_count);
+ 
+-	return (mc_rotors_added_successfully && surfaces_added_successfully);
++	return (mc_rotors_added_successfully && hover_surfaces_added_successfully && surfaces_added_successfully);
+ }
+ 
+ void ActuatorEffectivenessTailsitterVTOL::allocateAuxilaryControls(const float dt, int matrix_index,
+ 		ActuatorVector &actuator_sp)
+ {
+-	if (matrix_index == 1) {
++	// flaps/spoilers index surfaces from CS0; not supported together with hover surfaces
++	if (matrix_index == 1 && _hover_surface_count == 0) {
+ 		// apply flaps
+ 		normalized_unsigned_setpoint_s flaps_setpoint;
+ 
+diff --git a/src/modules/control_allocator/VehicleActuatorEffectiveness/ActuatorEffectivenessTailsitterVTOL.hpp b/src/modules/control_allocator/VehicleActuatorEffectiveness/ActuatorEffectivenessTailsitterVTOL.hpp
+index c7a588954f..c646ccbbdf 100644
+--- a/src/modules/control_allocator/VehicleActuatorEffectiveness/ActuatorEffectivenessTailsitterVTOL.hpp
++++ b/src/modules/control_allocator/VehicleActuatorEffectiveness/ActuatorEffectivenessTailsitterVTOL.hpp
+@@ -87,6 +87,11 @@ protected:
+ 	uint32_t _forwards_motors_mask{};
+ 
+ 	int _first_control_surface_idx{0}; ///< applies to matrix 1
++	int _hover_surface_count{0}; ///< surfaces CS0.. allocated in the hover matrix (CA_TS_MC_SV)
++
++	DEFINE_PARAMETERS(
++		(ParamInt<px4::params::CA_TS_MC_SV>) _param_ca_ts_mc_sv
++	)
+ 
+ 	uORB::Subscription _flaps_setpoint_sub{ORB_ID(flaps_setpoint)};
+ 	uORB::Subscription _spoilers_setpoint_sub{ORB_ID(spoilers_setpoint)};
+diff --git a/src/modules/control_allocator/module.yaml b/src/modules/control_allocator/module.yaml
+index dd36a2d070..c96c9ecbb4 100644
+--- a/src/modules/control_allocator/module.yaml
++++ b/src/modules/control_allocator/module.yaml
+@@ -35,6 +35,20 @@ parameters:
+                 15: Spacecraft 3D
+             default: 0
+ 
++        CA_TS_MC_SV:
++            description:
++                short: Tailsitter hover control surfaces
++                long: |
++                  Number of control surfaces, starting at CS0, that the tailsitter allocates
++                  together with the rotors in hover instead of with the forward-flight surfaces.
++                  Used for thrust-vectoring vanes in the slipstream of a ducted fan. When non-zero,
++                  yaw by rotor torque difference is enabled for any rotor count (coaxial rotors).
++                  Flaps and spoilers are not applied when this is non-zero.
++            type: int32
++            default: 0
++            min: 0
++            max: 8
++
+         CA_METHOD:
+             description:
+                 short: Control allocation method

@@ -87,6 +87,12 @@ def generate(cfg: dict, out_dir: str | Path) -> dict:
             "motor_time_constant_s": r["motor_time_constant_s"],
             "disk_area_m2": fan.disk_area, "exit_area_ratio": fan.exit_area_ratio,
         },
+        "duct": {
+            "center_station_m": cfg["duct"]["center_station_m"],
+            "exit_station_m": cfg["duct"]["exit_station_m"],
+            "disk_area_m2": fan.disk_area, "exit_area_ratio": fan.exit_area_ratio,
+        },
+        "air_density_kg_m3": cfg["environment"]["air_density_kg_m3"],
         "vanes": {
             "axes": v["axes"], "exit_station_m": cfg["duct"]["exit_station_m"],
             "max_deflection_deg": v["max_deflection_deg"], "servo_rate_deg_s": v["servo_rate_deg_s"],

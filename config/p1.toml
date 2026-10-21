@@ -91,6 +91,7 @@ inner_diameter_m = 0.30
 hub_diameter_m = 0.06         # VARSAYIM
 exit_area_ratio = 1.0         # çıkış alanı / disk alanı; 1,0 → ideal güçte √2 kazanç
 exit_station_m = 0.28         # VARSAYIM
+center_station_m = 0.13       # momentum sürüklemesinin uygulandığı nokta, VARSAYIM
 
 [rotors]
 # Kanal içinde aynı eksende zıt dönen iki pervane; her biri ayrı motor.
