@@ -3,7 +3,7 @@
   "generator": "tools.aerogen 0.1.0",
   "config": {
     "file": "p1.toml",
-    "sha256": "a754a74bd16331542c1f5399470474fa3dfad3b3ed23062307b091e545323cca"
+    "sha256": "e798c8f20a8dd34d08a985ccdb07db6bd05cfeee6a993a37cd29e0315f3d80ab"
   },
   "frame": "body FRD (x nose, y right wing, z down); stations aft from nose",
   "reference": {
@@ -14,11 +14,11 @@
   },
   "mass": {
     "mass_kg": 12.7,
-    "cg_station_m": 0.46,
+    "cg_station_m": 0.458898,
     "inertia_kg_m2": {
-      "Ixx": 0.374928,
-      "Iyy": 0.987973,
-      "Izz": 1.29442
+      "Ixx": 0.374853,
+      "Iyy": 1.01056,
+      "Izz": 1.31701
     }
   },
   "tables": {
@@ -38,9 +38,11 @@
     "CL_elevon_sym": 1.70034,
     "Cm_elevon_sym": -0.340788,
     "Cl_elevon_diff": 0.488848,
-    "elevon_flap_effectiveness": 0.608998
+    "elevon_flap_effectiveness": 0.608998,
+    "CL_elevator": 0.225218,
+    "Cm_elevator": -0.347136
   },
-  "derivative_notes": "damping uses hat rates q c/(2V), p b/(2V), r b/(2V); elevon_sym: both trailing edges down positive; elevon_diff = (left - right)/2, positive rolls right",
+  "derivative_notes": "damping uses hat rates q c/(2V), p b/(2V), r b/(2V); elevon_sym: both trailing edges down positive; elevon_diff = (left - right)/2, positive rolls right; elevator: trailing edge down positive (nose down)",
   "rotor": {
     "diameter_m": 0.3,
     "max_rpm": 10000.0,
@@ -72,12 +74,15 @@
   "elevons": {
     "max_deflection_deg": 25.0
   },
+  "elevator": {
+    "max_deflection_deg": 25.0
+  },
   "hover_allocation": {
     "rpm": 8451.54,
     "shaft_power_w": 3406.68,
     "rotor_torque_nm": 1.92458,
-    "vane_arm_m": 0.18,
-    "pitch_yaw_moment_per_vane_rad_nm": 17.9344,
+    "vane_arm_m": 0.178898,
+    "pitch_yaw_moment_per_vane_rad_nm": 17.8246,
     "thrust_axis_moment_per_rpm_split_nm": 0.000910879
   },
   "cruise_trim": {
@@ -87,7 +92,7 @@
     "CD": 0.0592126,
     "rpm": 5668.01
   },
-  "static_margin": 0.100279,
+  "static_margin": 0.102788,
   "stall": {
     "cl_max": 0.895568,
     "v_stall_m_s": 17.3992

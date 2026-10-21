@@ -33,6 +33,7 @@ int main(int argc, char **argv)
       x.elevon[i] = in["elevon"][i];
       x.rotor_accel[i] = in["rotor_accel"][i];
     }
+    x.elevator = in["elevator"];
     const auto out = model.wrench(x);
     double worst = 0.0;
     for (int i = 0; i < 3; ++i) {

@@ -63,3 +63,5 @@ pencerisiz duman testi için `px4/sitl_hover_check.sh` (`WIND=8` ile rüzgârlı
 
 Durum (2026-10-21): 10 m askı ±5 cm, 0,5°. 8 m/s rüzgârda (3 s'de artan) en çok
 0,8 m, sonra ±0,35 m; rüzgârda iniş dik kalıyor. Ani 8 m/s basamakta 1,7 m anlık sapma.
+Tam görev (kalkış, ön geçiş, seyir, geri geçiş, iniş) rüzgârsız ve 5 m/s yan rüzgârda
+geçiyor: ön geçiş 3,7–3,8 s, 2–3 m irtifa kaybı.

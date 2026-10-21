@@ -91,6 +91,10 @@ class Cruise(unittest.TestCase):
         diff = self.m.wrench(Inputs(**{**self.inp, "elevon": (d, -d)}))
         self.assertLess(sym.moment[1] - base.moment[1], 0)   # TE down -> nose down
         self.assertGreater(diff.moment[0] - base.moment[0], 0)  # left down, right up -> roll right
+        up = self.m.wrench(Inputs(**self.inp, elevator=-d))
+        self.assertGreater(up.moment[1] - base.moment[1], 0)    # elevator TE up -> nose up
+        # ...and, unlike the wing elevons, it barely changes the total lift.
+        self.assertLess(abs(up.force[2] - base.force[2]), 0.25 * abs(sym.force[2] - base.force[2]))
 
     def test_damping_opposes_rates(self):
         base = self.m.wrench(Inputs(**self.inp))

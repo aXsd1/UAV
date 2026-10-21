@@ -8,6 +8,7 @@
 //     <motor_upper>0</motor_upper> <motor_lower>1</motor_lower>   <!-- indices in command/motor_speed -->
 //     <servo_vane_pitch>0</servo_vane_pitch> <servo_vane_yaw>1</servo_vane_yaw>
 //     <servo_elevon_left>2</servo_elevon_left> <servo_elevon_right>3</servo_elevon_right>
+//     <servo_elevator>4</servo_elevator>
 //   </plugin>
 //
 // The link must follow PX4's tailsitter convention: base_link is the multicopter
@@ -73,10 +74,11 @@ public:
     wind_ = sdf->Get<gz::math::Vector3d>("wind", gz::math::Vector3d::Zero).first;
     motor_idx_ = {sdf->Get<int>("motor_upper", 0).first, sdf->Get<int>("motor_lower", 1).first};
     servo_idx_ = {sdf->Get<int>("servo_vane_pitch", 0).first, sdf->Get<int>("servo_vane_yaw", 1).first,
-                  sdf->Get<int>("servo_elevon_left", 2).first, sdf->Get<int>("servo_elevon_right", 3).first};
+                  sdf->Get<int>("servo_elevon_left", 2).first, sdf->Get<int>("servo_elevon_right", 3).first,
+                  sdf->Get<int>("servo_elevator", 4).first};
 
     node_.Subscribe("/" + model_name + "/command/motor_speed", &VtolDynamics::OnMotors, this);
-    for (int k = 0; k < 4; ++k) {
+    for (int k = 0; k < 5; ++k) {
       const int idx = servo_idx_[k];
       std::function<void(const gz::msgs::Double &)> cb = [this, k](const gz::msgs::Double &m) {
         std::lock_guard<std::mutex> lock(mutex_);
@@ -99,15 +101,17 @@ public:
     if (dt <= 0.0) return;
 
     Pair rotor_cmd{}, vane_cmd{}, elevon_cmd{};
+    double elevator_cmd = 0.0;
     gz::math::Vector3d wind;
     {
       std::lock_guard<std::mutex> lock(mutex_);
       rotor_cmd = motor_cmd_;
       vane_cmd = {servo_cmd_[0], servo_cmd_[1]};
       elevon_cmd = {servo_cmd_[2], servo_cmd_[3]};
+      elevator_cmd = servo_cmd_[4];
       wind = wind_;
     }
-    const Pair accel = actuators_.step(vehicle_->params(), rotor_cmd, vane_cmd, elevon_cmd, dt);
+    const Pair accel = actuators_.step(vehicle_->params(), rotor_cmd, vane_cmd, elevon_cmd, dt, elevator_cmd);
 
     const auto pose = link_.WorldPose(ecm);
     const auto v_world = link_.WorldLinearVelocity(ecm);
@@ -121,6 +125,7 @@ public:
     in.rotor_speed = actuators_.rotor;
     in.vane = actuators_.vane;
     in.elevon = actuators_.elevon;
+    in.elevator = actuators_.elevator;
     in.rotor_accel = accel;
 
     const Output out = vehicle_->wrench(in);
@@ -144,9 +149,9 @@ private:
   std::mutex mutex_;
   gz::math::Vector3d wind_;
   std::array<int, 2> motor_idx_{0, 1};
-  std::array<int, 4> servo_idx_{0, 1, 2, 3};
+  std::array<int, 5> servo_idx_{0, 1, 2, 3, 4};
   Pair motor_cmd_{};
-  std::array<double, 4> servo_cmd_{};
+  std::array<double, 5> servo_cmd_{};
 };
 
 }  // namespace vtol

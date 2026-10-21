@@ -78,7 +78,8 @@ def generate(cfg: dict, out_dir: str | Path) -> dict:
         "derivatives_per_rad": res["derivatives"],
         "derivative_notes": "damping uses hat rates q c/(2V), p b/(2V), r b/(2V); "
                             "elevon_sym: both trailing edges down positive; "
-                            "elevon_diff = (left - right)/2, positive rolls right",
+                            "elevon_diff = (left - right)/2, positive rolls right; "
+                            "elevator: trailing edge down positive (nose down)",
         "rotor": {
             "diameter_m": r["diameter_m"], "max_rpm": r["max_rpm"],
             "upper_station_m": r["upper_station_m"], "lower_station_m": r["lower_station_m"],
@@ -99,6 +100,7 @@ def generate(cfg: dict, out_dir: str | Path) -> dict:
             "deadband_deg": v["deadband_deg"],
         },
         "elevons": {"max_deflection_deg": cfg["elevons"]["max_deflection_deg"]},
+        "elevator": {"max_deflection_deg": cfg["elevator"]["max_deflection_deg"]},
         "hover_allocation": res["hover"],
         "cruise_trim": {
             "speed_m_s": cfg["requirements"]["cruise_speed_m_s"],

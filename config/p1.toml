@@ -32,13 +32,14 @@ components = [
   { name = "tail",       mass_kg = 0.50, station_m = 1.15, size_m = [0.15, 0.50, 0.50] },
   # 2 × Profuse 6S 16000 mAh LiPo seri (12S), dokümandaki tahmin 4,0 kg
   # (üretici verisi bulunamadı; aynı sınıf 16 Ah 6S paketler 1,86–1,99 kg).
-  { name = "battery",    mass_kg = 4.00, station_m = 0.44, size_m = [0.30, 0.15, 0.08] },
+  { name = "battery",    mass_kg = 4.00, station_m = 0.43, size_m = [0.30, 0.15, 0.08] },
   # 3 kW tepe motorlar: 2,2 kW sınıfına göre motor başına ~+0,1 kg VARSAYIM; artış paydan.
   { name = "propulsion", mass_kg = 1.80, station_m = 0.12, size_m = [0.15, 0.10, 0.10] },
   { name = "payload",    mass_kg = 1.00, station_m = 0.42, size_m = [0.12, 0.12, 0.12] },
   { name = "avionics",   mass_kg = 0.80, station_m = 0.60, size_m = [0.20, 0.08, 0.08] },
   { name = "companion",  mass_kg = 0.70, station_m = 0.52, size_m = [0.15, 0.10, 0.08] },
-  { name = "margin",     mass_kg = 0.05, station_m = 0.60, size_m = [0.20, 0.10, 0.10] },
+  # Pay (margin) bitti: son 0,05 kg elevatör servosuna gitti (2026-10-21).
+  { name = "elevator_servo", mass_kg = 0.05, station_m = 1.12, size_m = [0.04, 0.04, 0.02] },
   # İniş ayağı uzantıları: kuyruk kanatçık uçlarından 0,45 m yarıçapa (2026-10-21), VARSAYIM kütle.
   { name = "landing_gear", mass_kg = 0.10, station_m = 1.28, size_m = [0.05, 0.90, 0.90] },
   { name = "vanes",      mass_kg = 0.40, station_m = 0.29, size_m = [0.08, 0.30, 0.30] },
@@ -67,6 +68,12 @@ flat_plate_cd90 = 1.20        # VARSAYIM, düşük en-boy oranlı levha
 chord_fraction = 0.25         # VARSAYIM
 span_start_fraction = 0.20    # yarı açıklık oranı, VARSAYIM
 span_end_fraction = 0.95      # VARSAYIM
+max_deflection_deg = 25.0     # VARSAYIM
+
+[elevator]
+# Yatay kanatçıklarda flaplı elevatör, tek servo, iki taraf birlikte (2026-10-21).
+# Kanat elevonları AM'ye çok yakın olduğu için yatay uçuşta yunuslamayı bu yapar.
+chord_fraction = 0.30         # VARSAYIM
 max_deflection_deg = 25.0     # VARSAYIM
 
 [tail]

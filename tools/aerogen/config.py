@@ -8,7 +8,7 @@ from pathlib import Path
 
 REQUIRED_SECTIONS = (
     "meta", "environment", "mass", "aero", "wing", "elevons", "tail", "body",
-    "landing_gear", "duct", "rotors", "motors", "vanes", "battery", "requirements",
+    "landing_gear", "elevator", "duct", "rotors", "motors", "vanes", "battery", "requirements",
 )
 
 

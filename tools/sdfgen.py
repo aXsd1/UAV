@@ -165,6 +165,7 @@ def build(cfg: dict, aero: dict, aero_dir: str) -> str:
       <servo_vane_yaw>1</servo_vane_yaw>
       <servo_elevon_left>2</servo_elevon_left>
       <servo_elevon_right>3</servo_elevon_right>
+      <servo_elevator>4</servo_elevator>
     </plugin>
   </model>
 </sdf>

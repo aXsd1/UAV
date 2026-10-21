@@ -170,6 +170,10 @@ class Aircraft:
         dcm_flap = flap_cm_qc_per_rad(e["chord_fraction"]) * (a_w / w["airfoil_lift_slope_per_rad"]) * (f2 - f1)
         cm_de = -cl_de * self._arm(w["quarter_chord_station_m"]) / self.c + dcm_flap
 
+        # Tail elevator on the horizontal fin pair: lift at the tail, arm l_t.
+        tau_el = flap_effectiveness(self.cfg["elevator"]["chord_fraction"])
+        cl_el = self.eta_t * s_ratio * a_t * tau_el
+
         tail_roll = -(a_t / 6.0) * s_ratio * span_ratio ** 2  # one fin pair
         return {
             "CLq": 2.0 * self.eta_t * a_t * v_h,
@@ -183,4 +187,6 @@ class Aircraft:
             "Cm_elevon_sym": cm_de,
             "Cl_elevon_diff": a_w * tau * (f2 ** 2 - f1 ** 2) / 4.0,
             "elevon_flap_effectiveness": tau,
+            "CL_elevator": cl_el,
+            "Cm_elevator": -cl_el * l_t / self.c,
         }

@@ -99,6 +99,7 @@ Model::Model(const std::string &dir)
   p_.vane_rate = rad(j["vanes"]["servo_rate_deg_s"]);
   p_.vane_deadband = rad(j["vanes"]["deadband_deg"]);
   p_.elevon_max = rad(j["elevons"]["max_deflection_deg"]);
+  p_.elevator_max = rad(j["elevator"]["max_deflection_deg"]);
   p_.hover_rpm = j["hover_allocation"]["rpm"];
   for (const auto &[k, v] : j["derivatives_per_rad"].items()) p_.deriv[k] = v;
 
@@ -181,6 +182,8 @@ Output Model::wrench(const Inputs &in) const
     cl += dv.at("CL_elevon_sym") * de;
     cm += dv.at("Cm_elevon_sym") * de;
     c_roll += dv.at("Cl_elevon_diff") * da;
+    cl += dv.at("CL_elevator") * in.elevator;
+    cm += dv.at("Cm_elevator") * in.elevator;
 
     const double qbar = 0.5 * p_.rho * V * V;
     // The alpha tables only see the x-z plane flow (q cos^2 beta); see model.py.
@@ -212,7 +215,7 @@ Output Model::wrench(const Inputs &in) const
 
 // ---------------------------------------------------------------------------
 Pair ActuatorState::step(const Params &p, const Pair &cmd_rotor, const Pair &cmd_vane, const Pair &cmd_elevon,
-                         double dt)
+                         double dt, double cmd_elevator)
 {
   Pair accel{};
   const double a = 1.0 - std::exp(-dt / p.motor_tau);
@@ -231,6 +234,7 @@ Pair ActuatorState::step(const Params &p, const Pair &cmd_rotor, const Pair &cmd
     vane[i] = servo(vane[i], cmd_vane[i], p.vane_max);
     elevon[i] = servo(elevon[i], cmd_elevon[i], p.elevon_max);
   }
+  elevator = servo(elevator, cmd_elevator, p.elevator_max);
   return accel;
 }
 

@@ -42,6 +42,7 @@ class Inputs:
     vane: tuple[float, float]    # pitch, yaw deflection, rad
     elevon: tuple[float, float]  # left, right deflection, rad (trailing edge down +)
     rotor_accel: tuple[float, float] = (0.0, 0.0)
+    elevator: float = 0.0        # tail elevator, rad, trailing edge down +
 
 
 @dataclass
@@ -96,7 +97,7 @@ class VtolModel:
         ve = 0.5 * (u + math.sqrt(u * u + 4.0 * thrust / (self.rho * self.sigma_a)))
         return self.rho * self.sigma_a * ve, ve
 
-    def airframe(self, v_air: np.ndarray, omega: np.ndarray, elevon):
+    def airframe(self, v_air: np.ndarray, omega: np.ndarray, elevon, elevator: float = 0.0):
         """Propeller-off airframe force (FRD) and moment about the reference station."""
         u, v, w = v_air
         V = float(np.linalg.norm(v_air))
@@ -117,6 +118,8 @@ class VtolModel:
         cl += self.dv["CL_elevon_sym"] * de
         cm += self.dv["Cm_elevon_sym"] * de
         c_roll += self.dv["Cl_elevon_diff"] * da
+        cl += self.dv["CL_elevator"] * elevator
+        cm += self.dv["Cm_elevator"] * elevator
 
         qbar = 0.5 * self.rho * V * V
         # The alpha tables only see the flow in the x-z plane (q cos^2 beta), so they fade
@@ -181,7 +184,7 @@ class VtolModel:
         force += f_md
         moment += np.cross(self.arm(self.s_duct), f_md)
 
-        f_af, m_af_ref, alpha, beta = self.airframe(v_air, omega, x.elevon)
+        f_af, m_af_ref, alpha, beta = self.airframe(v_air, omega, x.elevon, x.elevator)
         force += f_af
         moment += m_af_ref + np.cross(self.arm(self.s_ref), f_af)
 
@@ -196,8 +199,9 @@ class ActuatorState:
     rotor: np.ndarray = field(default_factory=lambda: np.zeros(2))
     vane: np.ndarray = field(default_factory=lambda: np.zeros(2))
     elevon: np.ndarray = field(default_factory=lambda: np.zeros(2))
+    elevator: float = 0.0
 
-    def step(self, meta: dict, cmd_rotor, cmd_vane, cmd_elevon, dt: float):
+    def step(self, meta: dict, cmd_rotor, cmd_vane, cmd_elevon, dt: float, cmd_elevator: float = 0.0):
         tau = meta["rotor"]["motor_time_constant_s"]
         prev = self.rotor.copy()
         self.rotor = self.rotor + (np.asarray(cmd_rotor) - self.rotor) * (1.0 - math.exp(-dt / tau))
@@ -216,4 +220,5 @@ class ActuatorState:
 
         self.vane = servo(self.vane, cmd_vane, vmax)
         self.elevon = servo(self.elevon, cmd_elevon, emax)
+        self.elevator = float(servo(self.elevator, cmd_elevator, math.radians(meta["elevator"]["max_deflection_deg"])))
         return accel

@@ -30,7 +30,7 @@ struct Params
 {
   double S{}, b{}, c{}, s_ref{}, s_cg{}, rho{};
   double D{}, I_rotor{}, motor_tau{}, sigma_a{}, s_duct{}, s_vane{};
-  double vane_max{}, vane_rate{}, vane_deadband{}, elevon_max{};
+  double vane_max{}, vane_rate{}, vane_deadband{}, elevon_max{}, elevator_max{};
   double mass{}, hover_rpm{};
   std::map<std::string, double> deriv;
 };
@@ -43,6 +43,7 @@ struct Inputs
   Pair vane{};          ///< pitch, yaw deflection, rad
   Pair elevon{};        ///< left, right, rad, trailing edge down +
   Pair rotor_accel{};   ///< rad/s^2
+  double elevator{};    ///< tail elevator, rad, trailing edge down +
 };
 
 struct Output
@@ -78,8 +79,10 @@ private:
 struct ActuatorState
 {
   Pair rotor{}, vane{}, elevon{};
+  double elevator{};
   /// Advances by dt; returns rotor acceleration (rad/s^2).
-  Pair step(const Params &p, const Pair &cmd_rotor, const Pair &cmd_vane, const Pair &cmd_elevon, double dt);
+  Pair step(const Params &p, const Pair &cmd_rotor, const Pair &cmd_vane, const Pair &cmd_elevon, double dt,
+            double cmd_elevator = 0.0);
 };
 
 }  // namespace vtol

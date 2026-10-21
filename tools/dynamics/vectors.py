@@ -35,7 +35,7 @@ def cases(m: VtolModel):
                          vane=[0, 0], elevon=[0, 0])
     yield "cruise_controls_rates", dict(v_air=[19.5, 1.2, 2.9], omega=[0.4, -0.3, 0.2], rotor_speed=[w_c, 0.9 * w_c],
                                        vane=[math.radians(3), math.radians(4)],
-                                       elevon=[math.radians(8), math.radians(-4)])
+                                       elevon=[math.radians(8), math.radians(-4)], elevator=math.radians(-6))
     yield "transition_45deg", dict(v_air=[9.0, 0.5, 9.0], omega=[0, 0.5, 0], rotor_speed=[0.9 * w_h, 0.9 * w_h],
                                    vane=[math.radians(-10), 0], elevon=[math.radians(10), math.radians(10)])
     yield "reverse_flow", dict(v_air=[-6.0, 2.0, -1.0], omega=[0, 0, 0], rotor_speed=[w_h, w_h],
@@ -54,7 +54,9 @@ def main() -> None:
         m = VtolModel(AERO, cg_station=VtolModel(AERO).s_cg + cg_shift)
         for name, c in cases(m):
             c.setdefault("rotor_accel", [0.0, 0.0])
-            r = m.wrench(Inputs(**{k: (np.array(v) if k in ("v_air", "omega") else tuple(v)) for k, v in c.items()}))
+            c.setdefault("elevator", 0.0)
+            r = m.wrench(Inputs(**{k: (np.array(v) if k in ("v_air", "omega") else v if k == "elevator" else tuple(v))
+                                   for k, v in c.items()}))
             out.append({"name": f"{name}{'_cg' if cg_shift else ''}", "cg_station": m.s_cg, "inputs": c,
                         "force": r.force.tolist(), "moment": r.moment.tolist()})
     OUT.parent.mkdir(parents=True, exist_ok=True)

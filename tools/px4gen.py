@@ -45,6 +45,7 @@ def build(cfg: dict, aero: dict, rotor_rows: list[tuple[float, float, float]]) -
     w_max = aero["rotor"]["max_rpm"] * 2 * math.pi / 60.0
     vmax = aero["vanes"]["max_deflection_deg"]
     emax = aero["elevons"]["max_deflection_deg"]
+    elmax = aero["elevator"]["max_deflection_deg"]
     # Hover moment of one vane axis at full deflection (N m); the hover matrix is normalised,
     # so only its ratio to the rotor torque (CT * KM) matters.
     vane_full = aero["hover_allocation"]["pitch_yaw_moment_per_vane_rad_nm"] * math.radians(vmax)
@@ -99,20 +100,22 @@ param set-default CA_ROTOR1_CT {ct_param:.1f}
 param set-default CA_ROTOR1_KM {-km:.4f}   # lower, CW
 param set-default THR_MDL_FAC 1           # thrust ~ (motor speed)^2
 
-param set-default CA_SV_CS_COUNT 4
+param set-default CA_SV_CS_COUNT 5
 param set-default CA_SV_CS0_TYPE 12       # vane, pitch axis (hover matrix)
 param set-default CA_SV_CS0_TRQ_P {vane_full:.3f}
 param set-default CA_SV_CS1_TYPE 12       # vane, fixed-wing yaw axis = MC roll (hover matrix)
 param set-default CA_SV_CS1_TRQ_R {vane_full:.3f}
 # Elevons: roll only. The wing's aerodynamic centre is ~at the CG, so a symmetric elevon
 # mostly changes lift; asked for nose-up it cost so much lift that SITL stalled. Pitch is
-# trimmed by the tail incidence and controlled by the vanes (VT_FW_DIFTHR_EN pitch bit).
+# trimmed by the tail incidence and controlled by the tail elevator (CS4).
 param set-default CA_SV_CS2_TYPE 12       # left elevon (forward-flight matrix)
 param set-default CA_SV_CS2_TRQ_P 0
 param set-default CA_SV_CS2_TRQ_Y -0.5
 param set-default CA_SV_CS3_TYPE 12       # right elevon
 param set-default CA_SV_CS3_TRQ_P 0
 param set-default CA_SV_CS3_TRQ_Y 0.5
+param set-default CA_SV_CS4_TYPE 12       # tail elevator: forward-flight pitch (TE down = nose down)
+param set-default CA_SV_CS4_TRQ_P -1.0
 
 # --- Gazebo outputs ------------------------------------------------------------------
 param set-default SIM_GZ_EC_FUNC1 101
@@ -126,6 +129,7 @@ param set-default SIM_GZ_SV_FUNC1 201
 param set-default SIM_GZ_SV_FUNC2 202
 param set-default SIM_GZ_SV_FUNC3 203
 param set-default SIM_GZ_SV_FUNC4 204
+param set-default SIM_GZ_SV_FUNC5 205
 param set-default SIM_GZ_SV_MINA1 {-vmax:.0f}
 param set-default SIM_GZ_SV_MAXA1 {vmax:.0f}
 param set-default SIM_GZ_SV_MINA2 {-vmax:.0f}
@@ -134,6 +138,8 @@ param set-default SIM_GZ_SV_MINA3 {-emax:.0f}
 param set-default SIM_GZ_SV_MAXA3 {emax:.0f}
 param set-default SIM_GZ_SV_MINA4 {-emax:.0f}
 param set-default SIM_GZ_SV_MAXA4 {emax:.0f}
+param set-default SIM_GZ_SV_MINA5 {-elmax:.0f}
+param set-default SIM_GZ_SV_MAXA5 {elmax:.0f}
 
 # --- Hover control (first-cut gains, to be tuned in SITL) ---------------------------------
 param set-default MPC_THR_HOVER {hover_thr:.2f}
@@ -155,17 +161,15 @@ param set-default MC_AIRMODE 1
 # --- VTOL / forward flight --------------------------------------------------------
 param set-default VT_TYPE 0
 param set-default VT_ELEV_MC_LOCK 1
-# No rudder, and the elevons (on the wing, ~at the CG) mostly change lift, not pitch:
-# fixed-wing yaw and pitch also go to the vanes through the differential-thrust path.
-param set-default VT_FW_DIFTHR_EN 5     # yaw (1) + pitch (4)
+# No rudder: fixed-wing yaw goes to the vanes through the differential-thrust path.
+param set-default VT_FW_DIFTHR_EN 1     # yaw only; pitch has the elevator
 param set-default VT_FW_DIFTHR_S_Y 1
-param set-default VT_FW_DIFTHR_S_P 1
 param set-default VT_ARSP_TRANS {v_min:.1f}
 param set-default VT_F_TRANS_DUR 3
 param set-default VT_B_TRANS_DUR 5
 param set-default FW_THR_TRIM {fw_thr_trim:.2f}    # (cruise rpm / max rpm)^2 from the tables
 param set-default FW_THR_MAX 1.0
-param set-default FW_THR_MIN 0.10      # keep the jet alive: forward-flight pitch comes from the vanes
+param set-default FW_THR_MIN 0.10      # keep the jet alive: forward-flight yaw comes from the vanes
 param set-default FW_R_LIM 25          # bank limit: a 48 deg loiter bank stalled the wing in SITL
 param set-default NAV_LOITER_RAD 150   # ~20 deg bank at trim speed
 param set-default FW_PSP_OFF {fw_psp_off:.1f}      # cruise trim angle of attack; transition stops at this pitch
