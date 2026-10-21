@@ -52,6 +52,18 @@ class Hover(unittest.TestCase):
         self.assertLess(out.force[2] - out0.force[2], 0)
 
 
+class Sideslip(unittest.TestCase):
+    def test_pure_side_wind_is_continuous(self):
+        # With v_air almost along y, alpha = atan2(w, u) is arbitrary; the force must not care.
+        m = VtolModel(AERO)
+        forces = []
+        for u, w in ((1e-3, 0.0), (0.0, 1e-3), (-1e-3, 0.0), (0.0, -1e-3)):
+            out = m.wrench(hover_inputs(m, v_air=np.array([u, 8.0, w])))
+            forces.append(np.concatenate([out.force, out.moment]))
+        spread = np.max(np.ptp(np.array(forces), axis=0))
+        self.assertLess(spread, 0.05)
+
+
 class Cruise(unittest.TestCase):
     def setUp(self):
         self.m = VtolModel(AERO)

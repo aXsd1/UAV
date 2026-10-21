@@ -88,12 +88,28 @@ def analyse(cfg: dict) -> dict:
     q_w = 0.5 * rho * v_w * v_w
     _, _, cm90 = cm_about_cg(ac, math.radians(90.0), mp.cg_station)
     m_wind_pitch = abs(float(cm90)) * q_w * ac.S * ac.c
-    cy90, _, cn90 = ac.lateral(math.radians(90.0))
-    cn90_cg = float(cn90) + (mp.cg_station - ac.s_ref) * float(cy90) / ac.b
+    cy90_l, _, cn90_l = ac.lateral(math.radians(90.0))
+    cn90_cg = float(cn90_l) + (mp.cg_station - ac.s_ref) * float(cy90_l) / ac.b
     m_wind_yaw = abs(cn90_cg) * q_w * ac.S * ac.b
     vane_arm = mp.cg_station - cfg["duct"]["exit_station_m"]
     delta_max = math.radians(cfg["vanes"]["max_deflection_deg"])
     m_vane_max = weight * float(vanes.side_force_ratio(delta_max)) * vane_arm
+
+    # Tip-over. Hovering in wind the vehicle leans into it (duct momentum drag + airframe drag)
+    # and must touch down inside its tip-over angle. The weathervane (WV_AXIS=1 patch) keeps
+    # the wind on the span axis: the airframe is edge-on (beta = 90 deg) and the wind is on a
+    # leg axis of the + gear, so the tipping lever is the full leg radius.
+    lg = cfg["landing_gear"]
+    s_tail = lg["tail_end_station_m"]
+    h_cg = s_tail - mp.cg_station
+    mdot_hover = rho * fan.exit_area_ratio * fan.disk_area * fan.exit_velocity(weight)
+    cy90, _, cn90_ref = (float(x) for x in ac.lateral(math.radians(90.0)))
+    f_wind = mdot_hover * v_w + q_w * ac.S * abs(cy90)
+    lean = math.degrees(math.atan2(f_wind, weight))
+    tip_angle = math.degrees(math.atan2(lg["radius_m"], h_cg))
+    # On the ground, motors off: airframe wind moment about the leg contact vs weight * radius.
+    m_ground = abs(cn90_ref * ac.b + (s_tail - ac.s_ref) * cy90) * q_w * ac.S
+    ground_safety = weight * lg["radius_m"] / m_ground
 
     # Rotation about the thrust axis: +/-10 % rpm split between the rotors.
     q_hover = fan.rotor_torque(rps_hover)
@@ -120,6 +136,10 @@ def analyse(cfg: dict) -> dict:
         Check("Batarya akımı (T/W tepe, nominal gerilim)", f"{i_max:.0f} A @ {v_nominal:.1f} V", f"≤ {i_limit:.0f} A ({bat['max_continuous_c']:.0f}C)", i_max <= i_limit),
         Check(f"Vane yunuslama momenti vs {v_w:.0f} m/s yan rüzgâr", f"{m_vane_max:.1f} N·m (kol {vane_arm:.2f} m)", f"> 1,5 × {m_wind_pitch:.1f} N·m rüzgâr momenti", m_vane_max > 1.5 * m_wind_pitch),
         Check(f"Vane sapma momenti vs {v_w:.0f} m/s yan rüzgâr", f"{m_vane_max:.1f} N·m", f"> 1,5 × {m_wind_yaw:.1f} N·m rüzgâr momenti", m_vane_max > 1.5 * m_wind_yaw),
+        Check(f"Askıda {v_w:.0f} m/s yan rüzgâr (kanat açıklığı rüzgârda) yatışı vs devrilme açısı", f"{lean:.1f}° / {tip_angle:.1f}° (ayak {lg['radius_m']:.2f} m, AM yüksekliği {h_cg:.2f} m)",
+              f"devrilme ≥ yatış + {req['tip_over_margin_deg']:.0f}°", tip_angle >= lean + req["tip_over_margin_deg"]),
+        Check(f"Yerde {v_w:.0f} m/s rüzgâr, motorlar kapalı", f"{weight * lg['radius_m']:.0f} / {m_ground:.0f} N·m = {ground_safety:.2f}",
+              f"≥ {req['ground_tip_safety']:.1f}", ground_safety >= req["ground_tip_safety"]),
         Check("İtki ekseni etrafında moment (±%10 devir farkı)", f"{m_roll_split:.2f} N·m", "bilgi", None),
     ]
 

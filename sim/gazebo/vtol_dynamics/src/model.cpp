@@ -183,15 +183,17 @@ Output Model::wrench(const Inputs &in) const
     c_roll += dv.at("Cl_elevon_diff") * da;
 
     const double qbar = 0.5 * p_.rho * V * V;
+    // The alpha tables only see the x-z plane flow (q cos^2 beta); see model.py.
+    const double qbar_xz = 0.5 * p_.rho * (in.v_air[0] * in.v_air[0] + in.v_air[2] * in.v_air[2]);
     const double ca = std::cos(alpha), sa = std::sin(alpha);
     const double k = 0.25 * p_.rho * V * p_.S;
-    const Vec3 f_af{qbar * p_.S * (cl * sa - (cd)*ca),
+    const Vec3 f_af{qbar_xz * p_.S * (cl * sa - cd * ca),
                     qbar * p_.S * cy + k * p_.b * dv.at("CYr") * in.omega[2],
-                    qbar * p_.S * (-cl * ca - cd * sa) - k * p_.c * dv.at("CLq") * in.omega[1]};
+                    qbar_xz * p_.S * (-cl * ca - cd * sa) - k * p_.c * dv.at("CLq") * in.omega[1]};
     const double b2 = p_.b * p_.b, c2 = p_.c * p_.c;
     const Vec3 m_ref{
         qbar * p_.S * p_.b * c_roll + k * b2 * (dv.at("Clp") * in.omega[0] + dv.at("Clr") * in.omega[2]),
-        qbar * p_.S * p_.c * cm + k * c2 * dv.at("Cmq") * in.omega[1],
+        qbar_xz * p_.S * p_.c * cm + k * c2 * dv.at("Cmq") * in.omega[1],
         qbar * p_.S * p_.b * cn + k * b2 * (dv.at("Cnr") * in.omega[2] + dv.at("Cnp") * in.omega[0])};
     add(F, f_af);
     add(M, m_ref);

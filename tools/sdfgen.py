@@ -98,8 +98,8 @@ def build(cfg: dict, aero: dict, aero_dir: str) -> str:
     L = next(c for c in cfg["mass"]["components"] if c["name"] == "fuselage")["size_m"][0]
     t = cfg["tail"]
     fus_r = 0.07
-    tip = fus_r + t["fin_span_m"]
-    z_tail = z(L)
+    tip = cfg["landing_gear"]["radius_m"]
+    z_tail = z(cfg["landing_gear"]["tail_end_station_m"])
     spawn_z = -z_tail + 0.03
 
     w = cfg["wing"]
@@ -118,6 +118,13 @@ def build(cfg: dict, aero: dict, aero_dir: str) -> str:
         cx, cy = dx * (fus_r + t["fin_span_m"] / 2), dy * (fus_r + t["fin_span_m"] / 2)
         size = (t["fin_span_m"], 0.02, fin_chord) if dx else (0.02, t["fin_span_m"], fin_chord)
         vis += _box(f"fin_{k}", f"{cx:.4f} {cy:.4f} {zf:.4f} 0 0 0", size, dark)
+
+    # Landing-gear struts from the fin roots out to the leg tips.
+    strut_len = tip - fus_r
+    for k, (dx, dy) in enumerate(((0, 1), (0, -1), (1, 0), (-1, 0))):
+        c = fus_r + strut_len / 2
+        size = (strut_len, 0.015, 0.015) if dx else (0.015, strut_len, 0.015)
+        vis += _box(f"strut_{k}", f"{dx * c:.4f} {dy * c:.4f} {z_tail + 0.01:.4f} 0 0 0", size, grey)
 
     col = ""
     for k, (x, y) in enumerate(((0, tip), (0, -tip), (tip, 0), (-tip, 0))):

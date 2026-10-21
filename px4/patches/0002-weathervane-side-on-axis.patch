@@ -1,0 +1,53 @@
+diff --git a/src/lib/weather_vane/WeatherVane.cpp b/src/lib/weather_vane/WeatherVane.cpp
+index 384d55d874..248250623c 100644
+--- a/src/lib/weather_vane/WeatherVane.cpp
++++ b/src/lib/weather_vane/WeatherVane.cpp
+@@ -79,6 +79,14 @@ float WeatherVane::getWeathervaneYawrate()
+ 
+ 	float roll_sp = -asinf(body_z_sp(1));
+ 
++	if (_param_wv_axis.get() == 1) {
++		// Side-on: drive the forward/backward lean to zero instead, so the wind ends up on the
++		// body y axis. The sign of the roll lean picks the nearer side, so the vehicle turns
++		// at most 90 deg. For tailsitters this puts the wing edge-on to the wind in hover.
++		const float side = (roll_sp >= 0.f) ? 1.f : -1.f;
++		roll_sp = side * asinf(body_z_sp(0));
++	}
++
+ 	float roll_exceeding_treshold = 0.0f;
+ 	float min_roll_rad = math::radians(_param_wv_roll_min.get());
+ 
+diff --git a/src/lib/weather_vane/WeatherVane.hpp b/src/lib/weather_vane/WeatherVane.hpp
+index e5b76b12dd..c1e0d040d3 100644
+--- a/src/lib/weather_vane/WeatherVane.hpp
++++ b/src/lib/weather_vane/WeatherVane.hpp
+@@ -82,7 +82,8 @@ private:
+ 		(ParamBool<px4::params::WV_EN>) _param_wv_en,
+ 		(ParamFloat<px4::params::WV_ROLL_MIN>) _param_wv_roll_min,
+ 		(ParamFloat<px4::params::WV_GAIN>) _param_wv_gain,
+-		(ParamFloat<px4::params::WV_YRATE_MAX>) _param_wv_yrate_max
++		(ParamFloat<px4::params::WV_YRATE_MAX>) _param_wv_yrate_max,
++		(ParamInt<px4::params::WV_AXIS>) _param_wv_axis
+ 	)
+ 
+ };
+diff --git a/src/lib/weather_vane/weathervane_params.c b/src/lib/weather_vane/weathervane_params.c
+index 9cf6e021c1..1d487d19f4 100644
+--- a/src/lib/weather_vane/weathervane_params.c
++++ b/src/lib/weather_vane/weathervane_params.c
+@@ -80,3 +80,15 @@ PARAM_DEFINE_FLOAT(WV_ROLL_MIN, 1.0f);
+  * @group Multicopter Position Control
+  */
+ PARAM_DEFINE_FLOAT(WV_YRATE_MAX, 90.0f);
++
++/**
++ * Weathervane axis
++ *
++ * Which body axis is turned into the wind. Side-on is meant for tailsitters, whose
++ * wing is edge-on to the wind with this setting, reducing drag and lean in hover.
++ *
++ * @value 0 Heading (body x) into the wind
++ * @value 1 Side-on (body y) into the wind
++ * @group Multicopter Position Control
++ */
++PARAM_DEFINE_INT32(WV_AXIS, 0);

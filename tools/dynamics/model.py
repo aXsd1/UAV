@@ -119,10 +119,13 @@ class VtolModel:
         c_roll += self.dv["Cl_elevon_diff"] * da
 
         qbar = 0.5 * self.rho * V * V
+        # The alpha tables only see the flow in the x-z plane (q cos^2 beta), so they fade
+        # out smoothly as beta -> 90 deg, where alpha itself becomes ill-defined.
+        qbar_xz = 0.5 * self.rho * (u * u + w * w)
         ca, sa = math.cos(alpha), math.sin(alpha)
         cx = cl * sa - cd * ca
         cz = -cl * ca - cd * sa
-        force = qbar * self.S * np.array([cx, cy, cz])
+        force = self.S * np.array([qbar_xz * cx, qbar * cy, qbar_xz * cz])
 
         # Damping with hat rates: qbar*S*c*Cmq*(q c / 2V) = 0.25 rho V S c^2 Cmq q (no 1/V singularity).
         p, q, r = omega
@@ -134,7 +137,7 @@ class VtolModel:
         ])
         damp_force_z = -k * self.c * self.dv["CLq"] * q
         force = force + np.array([0.0, k * self.b * self.dv["CYr"] * r, damp_force_z])
-        moment = qbar * self.S * np.array([self.b * c_roll, self.c * cm, self.b * cn]) + damp
+        moment = self.S * np.array([qbar * self.b * c_roll, qbar_xz * self.c * cm, qbar * self.b * cn]) + damp
         return force, moment, alpha, beta
 
     # -- total ------------------------------------------------------------------

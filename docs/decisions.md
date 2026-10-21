@@ -19,11 +19,14 @@ Kısa kayıtlar; gerekçenin ayrıntısı tasarım ve simülasyon dokümanların
 | 13 | 2026-10-21 | Geliştirme ortamı WSL2 Ubuntu 24.04: PX4 v1.17.0, Gazebo Harmonic (gz-sim 8.15), ROS 2 Jazzy, Micro XRCE-DDS Agent 2.4.3 | Erin'in onayı; yönetici izni gerekmedi |
 | 14 | 2026-10-21 | PX4 yaması `CA_TS_MC_SV`: vane'ler askı kontrol matrisinde | Stok tailsitter askıda yalnız rotor kullanır; koaksiyel rotorlar yunuslama/yuvarlanma üretemez |
 | 15 | 2026-10-21 | Askı açı hızı kazançları P 2,5 / I 0,8 / D 0,04 | Atalet ~1 kg·m², vane yetkisi ~5 rad/s²; P 0,5 ile açı döngüsü salınıma girdi |
+| 16 | 2026-10-21 | İniş ayağı yarıçapı 0,45 m (kanatçık ucu 0,32 m yerine), +0,1 kg paydan; batarya 0,48 m | 0,32 m'de devrilme açısı 21°, rüzgârda yatış 23° → SITL'de temasta devrildi. 0,45 m: devrilme 28,7°, yerde güvenlik 5,8 |
+| 17 | 2026-10-21 | PX4 yaması `WV_AXIS=1`: weathervane kanat açıklığını rüzgâra çevirir (yakın taraf, en çok 90° dönüş) | Stok weathervane karnı rüzgâra çevirir (kanat rüzgâra dik, 29° yatış); yanlamasına 18° hesap, SITL'de ~6° |
+| 18 | 2026-10-21 | α tabloları yalnız x–z düzlemindeki dinamik basınçla (q cos²β) uygulanır | Tam yan rüzgârda α tanımsızlaşıyor; eski model küçük gürültüyle 87 N sıçrıyordu (regresyon testi eklendi) |
 
 ## Açık sorular
 
-- 8 m/s yan rüzgârda iniş: SITL'de temasta devrildi (rüzgârda ~22° yatık iniyor).
-- Ani 8 m/s rüzgâr basamağında 1,8 m anlık sapma; kalıcı durumda 0,2 m.
+- Ani 8 m/s rüzgâr basamağında 1,7 m anlık sapma (6 s'de toparlanıyor). 3 s'de artan rüzgârda en çok 0,8 m (weathervane dönüşü sırasında), sonra ±0,35 m.
+- Weathervane rüzgârda ±10° avlanıyor; kazanç ayarı gerekebilir.
 - Askıda yan rüzgâr yükünü kanal momentum sürüklemesi belirliyor (~3,2 kg/s × rüzgâr hızı).
 
 - Test sahası seçilmedi; varsayılan 10 × 10 km açık alan + şehir kenarı.

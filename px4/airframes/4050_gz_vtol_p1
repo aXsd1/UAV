@@ -36,9 +36,9 @@ param set-default THR_MDL_FAC 1           # thrust ~ (motor speed)^2
 
 param set-default CA_SV_CS_COUNT 4
 param set-default CA_SV_CS0_TYPE 12       # vane, pitch axis (hover matrix)
-param set-default CA_SV_CS0_TRQ_P 6.649
+param set-default CA_SV_CS0_TRQ_P 6.726
 param set-default CA_SV_CS1_TYPE 12       # vane, fixed-wing yaw axis = MC roll (hover matrix)
-param set-default CA_SV_CS1_TRQ_R 6.649
+param set-default CA_SV_CS1_TRQ_R 6.726
 param set-default CA_SV_CS2_TYPE 12       # left elevon (forward-flight matrix)
 param set-default CA_SV_CS2_TRQ_P -0.5
 param set-default CA_SV_CS2_TRQ_Y -0.5
@@ -95,5 +95,11 @@ param set-default FW_AIRSPD_STALL 12
 param set-default FW_AIRSPD_MIN 15
 param set-default FW_AIRSPD_TRIM 20
 param set-default FW_AIRSPD_MAX 28
-param set-default WV_EN 0
+# Weathervane side-on (px4/patches/0002): wing edge-on to the wind in hover, so less lean
+# and the wind on a leg axis at touchdown.
+param set-default WV_EN 1
+param set-default WV_AXIS 1
+param set-default WV_ROLL_MIN 2
+param set-default WV_YRATE_MAX 10
+param set-default MPC_LAND_SPEED 0.5
 param set-default EKF2_FUSE_BETA 0

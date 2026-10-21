@@ -133,7 +133,13 @@ param set-default FW_AIRSPD_STALL 12
 param set-default FW_AIRSPD_MIN 15
 param set-default FW_AIRSPD_TRIM {cfg['requirements']['cruise_speed_m_s']:.0f}
 param set-default FW_AIRSPD_MAX 28
-param set-default WV_EN 0
+# Weathervane side-on (px4/patches/0002): wing edge-on to the wind in hover, so less lean
+# and the wind on a leg axis at touchdown.
+param set-default WV_EN 1
+param set-default WV_AXIS 1
+param set-default WV_ROLL_MIN 2
+param set-default WV_YRATE_MAX 10
+param set-default MPC_LAND_SPEED 0.5
 param set-default EKF2_FUSE_BETA 0
 """
 

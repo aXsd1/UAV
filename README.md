@@ -59,5 +59,5 @@ Bir kez, WSL içinde: `tools/setup/wsl_setup.sh` (PX4, Gazebo Harmonic, ROS 2 Ja
 XRCE-DDS Agent), sonra `px4/install.sh`. Uçurmak için `px4/run_sitl.sh`;
 pencerisiz duman testi için `px4/sitl_hover_check.sh` (`WIND=8` ile rüzgârlı).
 
-Durum (2026-10-21): 10 m askı ±5 cm, 0,5°; 8 m/s sabit rüzgârda 0,2 m.
-Rüzgârda iniş henüz devriliyor.
+Durum (2026-10-21): 10 m askı ±5 cm, 0,5°. 8 m/s rüzgârda (3 s'de artan) en çok
+0,8 m, sonra ±0,35 m; rüzgârda iniş dik kalıyor. Ani 8 m/s basamakta 1,7 m anlık sapma.

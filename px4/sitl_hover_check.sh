@@ -2,7 +2,8 @@
 # Headless smoke test: start PX4 SITL + Gazebo with the P1 model, take off to
 # MIS_TAKEOFF_ALT, hold, land. Prints a position/attitude trace and a verdict.
 #   px4/sitl_hover_check.sh [hold_seconds]
-#   WIND=8 px4/sitl_hover_check.sh 30   # steady wind (m/s, from the east) once at altitude
+#   WIND=8 px4/sitl_hover_check.sh 30          # wind (m/s, from the east) once at altitude
+#   WIND=8 WIND_RAMP=3 px4/sitl_hover_check.sh 30  # ...ramped up over 3 s instead of a step
 set -uo pipefail
 WORK="${WORK:-$HOME/uav}"
 PX4="$WORK/PX4-Autopilot"
@@ -48,11 +49,26 @@ cmd commander takeoff | tail -1
 for t in $(seq 2 2 $((HOLD + 16))); do
   sleep 2; sample "t=$t"
   if [ "$t" = 16 ] && [ -n "${WIND:-}" ]; then
-    gz topic -t /model/vtol_p1_0/wind -m gz.msgs.Vector3d -p "x: -${WIND}" && echo "  wind ${WIND} m/s on"
+    RAMP="${WIND_RAMP:-0}"
+    ( steps=$(( RAMP > 0 ? RAMP * 4 : 1 ))
+      for k in $(seq 1 $steps); do
+        gz topic -t /model/vtol_p1_0/wind -m gz.msgs.Vector3d -p "x: -$(awk "BEGIN{print ${WIND}*$k/$steps}")"
+        sleep 0.25
+      done ) &
+    echo "  wind ${WIND} m/s on (ramp ${RAMP} s)"
   fi
 done
 cmd commander land | tail -1
 for t in $(seq 2 2 20); do sleep 2; sample "land+$t"; done
+
+echo "--- result (Gazebo ground truth) ---"
+pose=$(gz model -m vtol_p1_0 -p 2>/dev/null | tail -2)
+echo "$pose"
+# Final tilt from the last vehicle_attitude quaternion: tilt = 2 asin(sqrt(qx^2 + qy^2)).
+q=$(cmd listener vehicle_attitude -n 1 | awk '/q:/{gsub(/[\[\],]/,""); print $2,$3,$4,$5; exit}')
+tilt=$(awk -v q="$q" 'BEGIN{split(q,a," "); printf "%.1f", 2*atan2(sqrt(a[2]^2+a[3]^2), sqrt(1-a[2]^2-a[3]^2))*57.2958}')
+echo "final tilt ${tilt} deg"
+awk -v t="$tilt" 'BEGIN{exit !(t < 30)}' && echo "VERDICT: landed upright" || echo "VERDICT: TIPPED OVER"
 
 echo "--- warnings/errors from PX4 ---"
 grep -E "WARN|ERROR|fail" "$LOG" | sort | uniq -c | sort -rn | head -20

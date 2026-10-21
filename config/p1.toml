@@ -31,13 +31,15 @@ components = [
   { name = "tail",       mass_kg = 0.50, station_m = 1.15, size_m = [0.15, 0.50, 0.50] },
   # 2 × Profuse 6S 16000 mAh LiPo seri (12S), dokümandaki tahmin 4,0 kg
   # (üretici verisi bulunamadı; aynı sınıf 16 Ah 6S paketler 1,86–1,99 kg).
-  { name = "battery",    mass_kg = 4.00, station_m = 0.49, size_m = [0.30, 0.15, 0.08] },
+  { name = "battery",    mass_kg = 4.00, station_m = 0.48, size_m = [0.30, 0.15, 0.08] },
   # 3 kW tepe motorlar: 2,2 kW sınıfına göre motor başına ~+0,1 kg VARSAYIM; artış paydan.
   { name = "propulsion", mass_kg = 1.80, station_m = 0.12, size_m = [0.15, 0.10, 0.10] },
   { name = "payload",    mass_kg = 1.00, station_m = 0.42, size_m = [0.12, 0.12, 0.12] },
   { name = "avionics",   mass_kg = 0.80, station_m = 0.60, size_m = [0.20, 0.08, 0.08] },
   { name = "companion",  mass_kg = 0.70, station_m = 0.52, size_m = [0.15, 0.10, 0.08] },
-  { name = "margin",     mass_kg = 0.40, station_m = 0.60, size_m = [0.20, 0.10, 0.10] },
+  { name = "margin",     mass_kg = 0.30, station_m = 0.60, size_m = [0.20, 0.10, 0.10] },
+  # İniş ayağı uzantıları: kuyruk kanatçık uçlarından 0,45 m yarıçapa (2026-10-21), VARSAYIM kütle.
+  { name = "landing_gear", mass_kg = 0.10, station_m = 1.28, size_m = [0.05, 0.90, 0.90] },
   { name = "vanes",      mass_kg = 0.40, station_m = 0.29, size_m = [0.08, 0.30, 0.30] },
 ]
 
@@ -85,6 +87,12 @@ parasite_cd0 = 0.011          # kanat alanına göre, VARSAYIM
 crossflow_cd = 1.10           # silindir çapraz akış, VARSAYIM
 side_area_m2 = 0.27           # gövde (1,3 × 0,14) + kanal (0,25 × 0,34), VARSAYIM
 side_area_centroid_station_m = 0.52
+
+[landing_gear]
+# Dört ayak ucu artı (+) düzeninde, kuyruk kanatçıklarının hizasında. Ayak ucu
+# yarıçapı 0,32 m (kanatçık ucu) iken 8 m/s rüzgârda SITL inişi devrildi.
+radius_m = 0.45
+tail_end_station_m = 1.30      # ayak uçlarının yere değdiği istasyon
 
 [duct]
 inner_diameter_m = 0.30
@@ -142,5 +150,7 @@ hover_time_per_sortie_s = 120.0   # kalkış + iniş + geçişler, VARSAYIM
 hover_wind_m_s = 8.0
 static_margin_min = 0.08
 static_margin_max = 0.12
+tip_over_margin_deg = 5.0         # devrilme açısı ≥ rüzgârda askı yatışı + bu pay
+ground_tip_safety = 1.5           # yerde, motorlar kapalı: geri getiren moment / rüzgâr momenti
 hover_power_doc_w = 3400.0      # mil gücü, doküman 2026-10-21
 cruise_power_doc_w = 700.0      # elektrik, doküman 2026-10-21
