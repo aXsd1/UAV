@@ -31,12 +31,13 @@ components = [
   { name = "tail",       mass_kg = 0.50, station_m = 1.15, size_m = [0.15, 0.50, 0.50] },
   # 2 × Profuse 6S 16000 mAh LiPo seri (12S), dokümandaki tahmin 4,0 kg
   # (üretici verisi bulunamadı; aynı sınıf 16 Ah 6S paketler 1,86–1,99 kg).
-  { name = "battery",    mass_kg = 4.00, station_m = 0.47, size_m = [0.30, 0.15, 0.08] },
-  { name = "propulsion", mass_kg = 1.60, station_m = 0.12, size_m = [0.15, 0.10, 0.10] },
+  { name = "battery",    mass_kg = 4.00, station_m = 0.49, size_m = [0.30, 0.15, 0.08] },
+  # 3 kW tepe motorlar: 2,2 kW sınıfına göre motor başına ~+0,1 kg VARSAYIM; artış paydan.
+  { name = "propulsion", mass_kg = 1.80, station_m = 0.12, size_m = [0.15, 0.10, 0.10] },
   { name = "payload",    mass_kg = 1.00, station_m = 0.42, size_m = [0.12, 0.12, 0.12] },
   { name = "avionics",   mass_kg = 0.80, station_m = 0.60, size_m = [0.20, 0.08, 0.08] },
   { name = "companion",  mass_kg = 0.70, station_m = 0.52, size_m = [0.15, 0.10, 0.08] },
-  { name = "margin",     mass_kg = 0.60, station_m = 0.60, size_m = [0.20, 0.10, 0.10] },
+  { name = "margin",     mass_kg = 0.40, station_m = 0.60, size_m = [0.20, 0.10, 0.10] },
   { name = "vanes",      mass_kg = 0.40, station_m = 0.29, size_m = [0.08, 0.30, 0.30] },
 ]
 
@@ -109,7 +110,7 @@ motor_time_constant_s = 0.05  # birinci derece gecikme, VARSAYIM
 
 [motors]
 count = 2
-peak_power_w = 2200.0         # her biri
+peak_power_w = 3000.0         # her biri; T/W 1,4 için (2026-10-21)
 efficiency = 0.85             # motor + ESC, VARSAYIM
 
 [vanes]
