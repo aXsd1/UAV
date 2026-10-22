@@ -1,0 +1,414 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>P1 Yer Kontrol</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+:root {
+  --bg: #0e1116; --panel: #161b22; --panel2: #1c232c; --line: #2a323d;
+  --text: #e6edf3; --muted: #8b949e; --accent: #4aa3ff; --ok: #3fb950; --warn: #d29922; --bad: #f85149;
+  --mc: #a371f7; --fw: #39c5cf;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.35 system-ui, "Segoe UI", sans-serif; }
+header { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 8px 14px; background: var(--panel); border-bottom: 1px solid var(--line); }
+header h1 { font-size: 15px; margin: 0 10px 0 0; font-weight: 600; }
+.chip { padding: 3px 9px; border-radius: 999px; background: var(--panel2); border: 1px solid var(--line); font-size: 12.5px; white-space: nowrap; }
+.chip b { font-weight: 600; }
+.chip.ok { border-color: var(--ok); color: var(--ok); }
+.chip.bad { border-color: var(--bad); color: var(--bad); }
+.chip.warn { border-color: var(--warn); color: var(--warn); }
+.chip.mc { border-color: var(--mc); color: var(--mc); }
+.chip.fw { border-color: var(--fw); color: var(--fw); }
+main { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(330px, 1fr); gap: 12px; padding: 12px; }
+@media (max-width: 1000px) { main { grid-template-columns: 1fr; } }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+.card h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 8px; font-weight: 600; }
+.col { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+#view { position: relative; aspect-ratio: 16 / 9; background: #000; border-radius: 10px; overflow: hidden; border: 1px solid var(--line); }
+#cam { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+#hud { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+#nocam { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--muted); text-align: center; padding: 20px; }
+.viewbar { position: absolute; top: 8px; right: 8px; display: flex; gap: 6px; }
+.viewbar button { padding: 4px 8px; font-size: 12px; background: rgba(0,0,0,.55); }
+.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; }
+.tile { background: var(--panel2); border-radius: 8px; padding: 7px 9px; }
+.tile .k { color: var(--muted); font-size: 11.5px; }
+.tile .v { font-size: 21px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.tile .v small { font-size: 12px; color: var(--muted); font-weight: 400; margin-left: 2px; }
+.btns { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 7px; }
+button { background: var(--panel2); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 9px 10px; font: inherit; cursor: pointer; text-align: center; }
+button:hover { border-color: var(--accent); }
+button:active { transform: translateY(1px); }
+button.primary { background: #1f6feb; border-color: #1f6feb; }
+button.fw { border-color: var(--fw); }
+button.mc { border-color: var(--mc); }
+button.danger { border-color: var(--bad); color: var(--bad); }
+button.active { outline: 2px solid var(--accent); }
+button:disabled { opacity: .45; cursor: default; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.row label { color: var(--muted); font-size: 12.5px; }
+input[type=number] { width: 74px; background: var(--panel2); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 6px; font: inherit; }
+input[type=range] { flex: 1; min-width: 100px; }
+#map { height: 300px; border-radius: 8px; }
+#log { height: 150px; overflow-y: auto; font: 12.5px/1.4 ui-monospace, Consolas, monospace; background: var(--panel2); border-radius: 8px; padding: 6px 8px; }
+#log .e3, #log .e2, #log .e1, #log .e0 { color: var(--bad); }
+#log .e4 { color: var(--warn); }
+#log .t { color: var(--muted); margin-right: 6px; }
+.sticks { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+.sticks .hint { flex: 1; min-width: 210px; }
+.stick { flex: none; width: 84px; height: 84px; border-radius: 50%; border: 1px solid var(--line); background: var(--panel2); position: relative; }
+.stick i { position: absolute; width: 16px; height: 16px; border-radius: 50%; background: var(--accent); left: 34px; top: 34px; }
+.hint { color: var(--muted); font-size: 12.5px; }
+kbd { background: var(--panel2); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; font-size: 12px; }
+#toast { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: var(--panel2); border: 1px solid var(--line); padding: 8px 14px; border-radius: 8px; opacity: 0; transition: opacity .25s; pointer-events: none; }
+#toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<header>
+  <h1>P1 Yer Kontrol</h1>
+  <span id="c-conn" class="chip bad">Bağlantı yok</span>
+  <span id="c-mode" class="chip">Mod: —</span>
+  <span id="c-vtol" class="chip">—</span>
+  <span id="c-arm" class="chip">—</span>
+  <span id="c-land" class="chip">—</span>
+  <span id="c-bat" class="chip">Batarya —</span>
+  <span id="c-gps" class="chip">GPS —</span>
+</header>
+
+<main>
+  <div class="col">
+    <div id="view">
+      <img id="cam" alt="">
+      <div id="nocam">Kamera görüntüsü bekleniyor.<br>Simülasyon çalışıyor mu? Kamera, araç modelinin yeni sürümüyle gelir (px4/install.sh).</div>
+      <canvas id="hud"></canvas>
+      <div class="viewbar"><button id="b-hud">HUD: açık</button></div>
+    </div>
+
+    <div class="card">
+      <h2>Telemetri</h2>
+      <div class="tiles">
+        <div class="tile"><div class="k">İrtifa (kalkışa göre)</div><div class="v" id="t-alt">—</div></div>
+        <div class="tile"><div class="k">Yerden (lidar)</div><div class="v" id="t-agl">—</div></div>
+        <div class="tile"><div class="k">Deniz seviyesinden</div><div class="v" id="t-amsl">—</div></div>
+        <div class="tile"><div class="k">Eve uzaklık</div><div class="v" id="t-dist">—</div></div>
+        <div class="tile"><div class="k">Yer hızı</div><div class="v" id="t-gs">—</div></div>
+        <div class="tile"><div class="k">Hava hızı</div><div class="v" id="t-as">—</div></div>
+        <div class="tile"><div class="k">Dikey hız</div><div class="v" id="t-vs">—</div></div>
+        <div class="tile"><div class="k">Yön</div><div class="v" id="t-hdg">—</div></div>
+        <div class="tile"><div class="k">Burun açısı (ufka göre)</div><div class="v" id="t-nose">—</div></div>
+        <div class="tile"><div class="k">Gaz</div><div class="v" id="t-thr">—</div></div>
+        <div class="tile"><div class="k">Rüzgâr tahmini</div><div class="v" id="t-wind">—</div></div>
+        <div class="tile"><div class="k">Batarya</div><div class="v" id="t-bat">—</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Harita <span class="hint" style="text-transform:none;letter-spacing:0">(haritaya tıklayıp "Buraya git" deyin)</span></h2>
+      <div id="map"></div>
+    </div>
+  </div>
+
+  <div class="col">
+    <div class="card">
+      <h2>Uçuş</h2>
+      <div class="row" style="margin-bottom:8px">
+        <label for="i-alt">Kalkış irtifası</label><input id="i-alt" type="number" value="30" min="5" max="500"> <span class="hint">m</span>
+        <button class="primary" data-cmd="takeoff" style="flex:1">Kalk</button>
+      </div>
+      <div class="btns">
+        <button class="mc" data-mode="LOITER">Askıda bekle / Tur at</button>
+        <button class="fw" data-cmd="to_fw">Yatay uçuşa geç</button>
+        <button class="mc" data-cmd="to_mc">Askıya (dikey) dön</button>
+        <button data-cmd="rtl">Eve dön</button>
+        <button data-cmd="land">İniş</button>
+        <button data-mode="MISSION">Görev</button>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <label for="i-goalt">İrtifa</label><input id="i-goalt" type="number" value="50"> <span class="hint">m</span>
+        <button id="b-goalt">Ayarla</button>
+        <label for="i-speed">Hız</label><input id="i-speed" type="number" value="25"> <span class="hint">m/s</span>
+        <button id="b-speed">Ayarla</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Manuel kontrol</h2>
+      <div class="btns" style="margin-bottom:8px">
+        <button data-mode="POSCTL" class="manual">Konum modu</button>
+        <button data-mode="ALTCTL" class="manual">İrtifa modu</button>
+        <button data-mode="STABILIZED" class="manual">Dengeli mod</button>
+      </div>
+      <div class="sticks">
+        <div class="stick" title="Sol çubuk: gaz/irtifa ve sapma"><i id="s-left"></i></div>
+        <div class="stick" title="Sağ çubuk: yunuslama ve yatış"><i id="s-right"></i></div>
+        <div class="hint">
+          <kbd>W</kbd><kbd>S</kbd> yüksel/alçal &nbsp; <kbd>A</kbd><kbd>D</kbd> sağa/sola dön<br>
+          <kbd>↑</kbd><kbd>↓</kbd> ileri/geri &nbsp; <kbd>←</kbd><kbd>→</kbd> sola/sağa<br>
+          Oyun kolu da çalışır. Yatay uçuşta <kbd>↑</kbd><kbd>↓</kbd> alçalma/tırmanma, <kbd>W</kbd><kbd>S</kbd> hızdır.
+        </div>
+      </div>
+      <div class="row" style="margin-top:8px"><span class="hint" id="manual-state">Sanal kumanda kapalı</span>
+        <button id="b-manual-off" style="margin-left:auto">Kumandayı kapat</button></div>
+    </div>
+
+    <div class="card">
+      <h2>Motorlar</h2>
+      <div class="btns">
+        <button data-cmd="arm">Motorları kur</button>
+        <button data-cmd="disarm">Motorları durdur</button>
+        <button class="danger" id="b-kill">ACİL DURDUR</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Rüzgâr (simülasyon)</h2>
+      <div class="row"><label style="width:80px">Hız</label><input id="w-speed" type="range" min="0" max="15" step="0.5" value="0"><span id="w-speed-v" style="width:58px">0 m/s</span></div>
+      <div class="row"><label style="width:80px">Nereden</label><input id="w-dir" type="range" min="0" max="355" step="5" value="0"><span id="w-dir-v" style="width:58px">0° K</span></div>
+      <div class="row"><label style="width:80px">Türbülans</label><input id="w-turb" type="range" min="0" max="4" step="0.1" value="0"><span id="w-turb-v" style="width:58px">0 m/s</span></div>
+      <div class="row" style="margin-top:6px"><button id="b-wind">Uygula</button><button id="b-wind0">Rüzgârı kes</button></div>
+    </div>
+
+    <div class="card">
+      <h2>Olaylar</h2>
+      <div id="log"></div>
+    </div>
+  </div>
+</main>
+<div id="toast"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+let S = {};
+const D2R = Math.PI / 180, R2D = 180 / Math.PI;
+
+// ---------- helpers ----------
+function toast(msg) { const t = $("toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("show"), 2200); }
+async function post(url, body) {
+  try {
+    const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    return await r.json();
+  } catch (e) { return { ok: false, msg: "Sunucuya ulaşılamadı" }; }
+}
+async function cmd(body) { const r = await post("/api/cmd", body); toast(r.ok ? r.msg : "Hata: " + r.msg); return r; }
+const fmt = (v, d = 1) => (v === undefined || v === null || isNaN(v)) ? "—" : v.toFixed(d);
+function setTile(id, v, unit, d = 1) { $(id).innerHTML = (v === undefined || v === null || isNaN(v)) ? "—" : `${v.toFixed(d)}<small>${unit}</small>`; }
+function chip(id, text, cls) { const c = $(id); c.textContent = text; c.className = "chip " + (cls || ""); }
+
+// quaternion (w,x,y,z) -> euler (roll, pitch, yaw) in rad
+function euler(q) {
+  const [w, x, y, z] = q;
+  return [Math.atan2(2 * (w * x + y * z), 1 - 2 * (x * x + y * y)),
+          Math.asin(Math.max(-1, Math.min(1, 2 * (w * y - z * x)))),
+          Math.atan2(2 * (w * z + x * y), 1 - 2 * (y * y + z * z))];
+}
+function qmul(a, b) {
+  return [a[0]*b[0]-a[1]*b[1]-a[2]*b[2]-a[3]*b[3], a[0]*b[1]+a[1]*b[0]+a[2]*b[3]-a[3]*b[2],
+          a[0]*b[2]-a[1]*b[3]+a[2]*b[0]+a[3]*b[1], a[0]*b[3]+a[1]*b[2]-a[2]*b[1]+a[3]*b[0]];
+}
+// PX4 tailsitter attitude is in the hover (multicopter) frame; fixed-wing body = hover body rotated +90 deg about y.
+const Q_FW = [Math.SQRT1_2, 0, Math.SQRT1_2, 0];
+function attitude() {
+  if (!S.q) return null;
+  const q = S.q;
+  const nose = Math.asin(Math.max(-1, Math.min(1, 1 - 2 * (q[1] * q[1] + q[2] * q[2])))) * R2D;  // nose = hover -z
+  const fw = S.vtol_state === "FW" || S.vtol_state === "TRANS_FW";
+  const e = euler(fw ? qmul(q, Q_FW) : q);
+  return { roll: e[0], pitch: e[1], yaw: e[2], nose, fw };
+}
+
+const MODE_TR = { POSCTL: "Konum", ALTCTL: "İrtifa", STABILIZED: "Dengeli", MANUAL: "Manuel", LOITER: "Bekle (Hold)",
+  MISSION: "Görev", RTL: "Eve dönüş", LAND: "İniş", TAKEOFF: "Kalkış", VTOL_TAKEOFF: "VTOL kalkış", READY: "Hazır", OFFBOARD: "Offboard", ACRO: "Akro" };
+const VTOL_TR = { MC: ["Askı (dikey)", "mc"], FW: ["Yatay uçuş", "fw"], TRANS_FW: ["Yatay uçuşa geçiyor", "warn"], TRANS_MC: ["Askıya geçiyor", "warn"] };
+const LAND_TR = { ON_GROUND: "Yerde", IN_AIR: "Havada", TAKEOFF: "Kalkıyor", LANDING: "İniyor" };
+
+// ---------- telemetry ----------
+let logSeen = 0;
+function update() {
+  const conn = S.connected;
+  chip("c-conn", conn ? "Bağlı" : "Bağlantı yok", conn ? "ok" : "bad");
+  chip("c-mode", "Mod: " + (MODE_TR[S.mode] || S.mode || "—"));
+  const v = VTOL_TR[S.vtol_state]; chip("c-vtol", v ? v[0] : "—", v ? v[1] : "");
+  chip("c-arm", S.armed ? "Motorlar kurulu" : "Motorlar kapalı", S.armed ? "warn" : "");
+  chip("c-land", LAND_TR[S.landed_state] || "—");
+  chip("c-bat", "Batarya " + (S.battery != null ? S.battery + "%" : "—"), S.battery != null && S.battery < 25 ? "bad" : "");
+  const fix = S.gps_fix >= 3; chip("c-gps", "GPS " + (S.sats != null ? S.sats + " uydu" : "—"), S.gps_fix == null ? "" : fix ? "ok" : "bad");
+
+  setTile("t-alt", S.alt_rel, " m");
+  setTile("t-agl", S.lidar, " m", 2);
+  setTile("t-amsl", S.alt_amsl, " m");
+  const d = S.dist_home; $("t-dist").innerHTML = d == null ? "—" : d >= 1000 ? `${(d / 1000).toFixed(2)}<small> km</small>` : `${d.toFixed(0)}<small> m</small>`;
+  setTile("t-gs", S.ground_speed, " m/s");
+  setTile("t-as", S.airspeed, " m/s");
+  setTile("t-vs", S.climb, " m/s");
+  setTile("t-hdg", S.heading, "°", 0);
+  const a = attitude(); setTile("t-nose", a ? a.nose : null, "°", 0);
+  setTile("t-thr", S.throttle, " %", 0);
+  if (S.wind_est) {
+    const [wn, we] = S.wind_est, sp = Math.hypot(wn, we), from = (Math.atan2(-we, -wn) * R2D + 360) % 360;
+    $("t-wind").innerHTML = sp < 0.3 ? `${sp.toFixed(1)}<small> m/s</small>` : `${sp.toFixed(1)}<small> m/s ${from.toFixed(0)}°'den</small>`;
+  }
+  $("t-bat").innerHTML = S.voltage ? `${S.voltage.toFixed(1)}<small> V</small>` : "—";
+
+  // camera
+  $("nocam").style.display = S.camera ? "none" : "flex";
+  if (S.camera && !camOn) startCam();
+
+  // manual
+  $("manual-state").textContent = S.manual_enabled ? "Sanal kumanda açık (klavye / oyun kolu)" : "Sanal kumanda kapalı";
+  document.querySelectorAll("[data-mode]").forEach(b => b.classList.toggle("active", b.dataset.mode === S.mode));
+
+  // log
+  for (const e of S.log || []) {
+    if (e.seq <= logSeen) continue; logSeen = e.seq;
+    const div = document.createElement("div"); div.className = "e" + e.sev;
+    const t = new Date(e.t * 1000).toLocaleTimeString("tr-TR");
+    div.innerHTML = `<span class="t">${t}</span>`; div.append(e.text);
+    const L = $("log"); L.append(div); L.scrollTop = L.scrollHeight;
+    while (L.children.length > 200) L.firstChild.remove();
+  }
+  updateMap();
+}
+
+function connectStream() {
+  const es = new EventSource("/api/stream");
+  es.onmessage = ev => { const s = JSON.parse(ev.data); const log = s.log; S = Object.assign(S, s); S.log = log; update(); };
+  es.onerror = () => { S.connected = false; S.camera = false; update(); };
+}
+
+// ---------- camera + HUD ----------
+let camOn = false, hudOn = true;
+function startCam() {
+  camOn = true;
+  const img = $("cam");
+  img.onerror = () => { camOn = false; };
+  img.src = "/camera.mjpg?" + Date.now();
+}
+$("b-hud").onclick = () => { hudOn = !hudOn; $("b-hud").textContent = "HUD: " + (hudOn ? "açık" : "kapalı"); };
+
+function drawHud() {
+  const c = $("hud"), r = c.getBoundingClientRect(), dpr = devicePixelRatio || 1;
+  if (c.width !== Math.round(r.width * dpr)) { c.width = Math.round(r.width * dpr); c.height = Math.round(r.height * dpr); }
+  const g = c.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const W = r.width, H = r.height; g.clearRect(0, 0, W, H);
+  const a = attitude();
+  if (hudOn && a) {
+    const cx = W / 2, cy = H / 2, ppd = H / 60;   // pixels per degree of pitch
+    g.save(); g.translate(cx, cy); g.rotate(-a.roll);
+    const off = a.pitch * R2D * ppd;
+    g.strokeStyle = "rgba(120,255,160,.85)"; g.fillStyle = "rgba(120,255,160,.85)"; g.lineWidth = 1.5;
+    g.font = "12px system-ui"; g.textAlign = "left"; g.textBaseline = "middle";
+    for (let p = -90; p <= 90; p += 10) {
+      const y = off - p * ppd; if (Math.abs(y) > H * 0.42) continue;
+      const w = p === 0 ? W * 0.7 : 60;
+      g.beginPath(); if (p < 0) g.setLineDash([6, 5]); g.moveTo(-w / 2, y); g.lineTo(w / 2, y); g.stroke(); g.setLineDash([]);
+      if (p !== 0) g.fillText(p, w / 2 + 6, y);
+    }
+    g.restore();
+    // aircraft symbol
+    g.strokeStyle = "#ffd33d"; g.lineWidth = 3;
+    g.beginPath(); g.moveTo(cx - 60, cy); g.lineTo(cx - 20, cy); g.lineTo(cx - 10, cy + 10); g.moveTo(cx + 60, cy); g.lineTo(cx + 20, cy); g.lineTo(cx + 10, cy + 10); g.stroke();
+    // text boxes
+    g.fillStyle = "rgba(0,0,0,.5)"; g.fillRect(10, cy - 40, 120, 80); g.fillRect(W - 130, cy - 40, 120, 80);
+    g.fillStyle = "#fff"; g.textAlign = "left"; g.font = "600 20px system-ui";
+    g.fillText(fmt(a.fw ? S.airspeed : S.ground_speed) + " m/s", 18, cy - 8);
+    g.fillText(fmt(S.alt_rel) + " m", W - 122, cy - 8);
+    g.font = "12px system-ui"; g.fillStyle = "#bbb";
+    g.fillText(a.fw ? "hava hızı" : "yer hızı", 18, cy + 18);
+    g.fillText("irtifa  " + (S.climb != null ? (S.climb >= 0 ? "▲" : "▼") + Math.abs(S.climb).toFixed(1) : ""), W - 122, cy + 18);
+    g.textAlign = "center"; g.fillStyle = "rgba(0,0,0,.5)"; g.fillRect(cx - 45, 10, 90, 26);
+    g.fillStyle = "#fff"; g.font = "600 16px system-ui"; g.fillText(fmt(S.heading, 0) + "°", cx, 24);
+    const info = `${a.fw ? "Sabit kanat çerçevesi" : "Askı çerçevesi"} · yatış ${fmt(a.roll * R2D, 0)}° · yunuslama ${fmt(a.pitch * R2D, 0)}° · burun ${fmt(a.nose, 0)}°`;
+    g.font = "12px system-ui"; g.fillStyle = "rgba(0,0,0,.5)";
+    const iw = g.measureText(info).width + 16; g.fillRect(cx - iw / 2, H - 28, iw, 22);
+    g.fillStyle = "#eee";
+    g.fillText(info, cx, H - 17);
+  }
+  requestAnimationFrame(drawHud);
+}
+
+// ---------- map ----------
+let map, mk, homeMk, track, trackPts = [], centered = false;
+function initMap() {
+  if (!window.L) { $("map").innerHTML = '<div class="hint" style="padding:12px">Harita yüklenemedi (internet gerekli).</div>'; return; }
+  map = L.map("map", { zoomControl: true }).setView([41.16, 32.64], 15);
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap" }).addTo(map);
+  track = L.polyline([], { color: "#4aa3ff", weight: 3 }).addTo(map);
+  mk = L.circleMarker([0, 0], { radius: 7, color: "#fff", fillColor: "#f85149", fillOpacity: 1, weight: 2 });
+  map.on("click", e => {
+    const alt = parseFloat($("i-goalt").value) || null;
+    const html = document.createElement("div");
+    const b = document.createElement("button"); b.textContent = "Buraya git"; b.className = "primary";
+    b.onclick = () => { cmd({ action: "goto", lat: e.latlng.lat, lon: e.latlng.lng, alt }); map.closePopup(); };
+    html.append(b);
+    L.popup().setLatLng(e.latlng).setContent(html).openOn(map);
+  });
+}
+function updateMap() {
+  if (!map || S.lat == null) return;
+  const p = [S.lat, S.lon];
+  if (!map.hasLayer(mk)) mk.addTo(map);
+  mk.setLatLng(p);
+  const last = trackPts[trackPts.length - 1];
+  if (!last || Math.abs(last[0] - p[0]) + Math.abs(last[1] - p[1]) > 2e-6) { trackPts.push(p); if (trackPts.length > 5000) trackPts.shift(); track.setLatLngs(trackPts); }
+  if (S.home) {
+    if (!homeMk) homeMk = L.marker([S.home[0], S.home[1]], { title: "Ev (kalkış noktası)" }).addTo(map);
+    homeMk.setLatLng([S.home[0], S.home[1]]);
+  }
+  if (!centered) { map.setView(p, 17); centered = true; }
+}
+
+// ---------- buttons ----------
+document.querySelectorAll("[data-cmd]").forEach(b => b.onclick = () => {
+  const body = { action: b.dataset.cmd };
+  if (body.action === "takeoff") body.alt = parseFloat($("i-alt").value) || 30;
+  cmd(body);
+});
+document.querySelectorAll("[data-mode]").forEach(b => b.onclick = () => cmd({ action: "mode", mode: b.dataset.mode }));
+$("b-kill").onclick = () => { if (confirm("Motorlar havada da kesilir ve araç düşer. Emin misiniz?")) cmd({ action: "kill" }); };
+$("b-goalt").onclick = () => cmd({ action: "goto", alt: parseFloat($("i-goalt").value) });
+$("b-speed").onclick = () => cmd({ action: "speed", speed: parseFloat($("i-speed").value) });
+$("b-manual-off").onclick = () => cmd({ action: "manual", on: false });
+
+// wind
+const DIRS = ["K", "KD", "D", "GD", "G", "GB", "B", "KB"];
+function windLabels() {
+  $("w-speed-v").textContent = $("w-speed").value + " m/s";
+  const d = +$("w-dir").value; $("w-dir-v").textContent = d + "° " + DIRS[Math.round(d / 45) % 8];
+  $("w-turb-v").textContent = $("w-turb").value + " m/s";
+}
+["w-speed", "w-dir", "w-turb"].forEach(id => $(id).oninput = windLabels);
+$("b-wind").onclick = async () => { const r = await post("/api/wind", { speed: +$("w-speed").value, from_deg: +$("w-dir").value, turbulence: +$("w-turb").value }); toast(r.msg || (r.ok ? "Tamam" : "Hata")); };
+$("b-wind0").onclick = async () => { $("w-speed").value = 0; $("w-turb").value = 0; windLabels(); const r = await post("/api/wind", { speed: 0, from_deg: 0, turbulence: 0 }); toast(r.msg || ""); };
+
+// ---------- virtual sticks: keyboard + gamepad ----------
+const keys = new Set();
+const KEYMAP = ["KeyW", "KeyS", "KeyA", "KeyD", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"];
+addEventListener("keydown", e => { if (e.target.tagName === "INPUT") return; if (KEYMAP.includes(e.code)) { keys.add(e.code); if (S.manual_enabled) e.preventDefault(); } });
+addEventListener("keyup", e => keys.delete(e.code));
+addEventListener("blur", () => keys.clear());
+const sticks = { x: 0, y: 0, z: 0.5, r: 0 };
+function readSticks() {
+  const k = c => keys.has(c) ? 1 : 0;
+  let x = 0.6 * (k("ArrowUp") - k("ArrowDown")), y = 0.6 * (k("ArrowRight") - k("ArrowLeft"));
+  let z = 0.5 + 0.4 * (k("KeyW") - k("KeyS")), r = 0.6 * (k("KeyD") - k("KeyA"));
+  const gp = navigator.getGamepads ? [...navigator.getGamepads()].find(g => g) : null;
+  if (gp && gp.axes.length >= 4) {   // standard mapping, mode 2
+    const dz = v => Math.abs(v) < 0.08 ? 0 : v;
+    r = dz(gp.axes[0]) || r; z = gp.axes[1] ? 0.5 - 0.5 * dz(gp.axes[1]) : z;
+    y = dz(gp.axes[2]) || y; x = -dz(gp.axes[3]) || x;
+  }
+  Object.assign(sticks, { x, y, z, r });
+  $("s-left").style.left = (34 + r * 34) + "px"; $("s-left").style.top = (34 - (z - 0.5) * 68) + "px";
+  $("s-right").style.left = (34 + y * 34) + "px"; $("s-right").style.top = (34 - x * 34) + "px";
+}
+setInterval(() => { readSticks(); if (S.manual_enabled) post("/api/sticks", sticks); }, 100);
+
+windLabels(); initMap(); connectStream(); drawHud();
+</script>
+</body>
+</html>

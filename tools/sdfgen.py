@@ -11,12 +11,16 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 from pathlib import Path
 
 from tools.aerogen import config
 
 ROOT = Path(__file__).resolve().parents[1]
 LIDAR_ABOVE_TAIL = 0.15  # m, lidar height above the leg tips (ground) when landed
+CAMERA_STATION = 0.30    # m from the nose
+CAMERA_TILT_DEG = 20.0   # belly camera tilt towards the tail
+CAMERA_TOPIC = "/vtol/camera"
 
 SENSORS = """
       <sensor name="imu_sensor" type="imu">
@@ -168,6 +172,29 @@ def build(cfg: dict, aero: dict, aero_dir: str) -> str:
     <joint name="lidar_sensor_joint" type="fixed">
       <parent>base_link</parent>
       <child>lidar_sensor_link</child>
+    </joint>
+
+    <!-- Belly camera (V-BAT style payload): looks out of the fixed-wing belly (+x), tilted
+         {CAMERA_TILT_DEG:.0f} deg towards the tail, so it sees the horizon slightly below level in hover
+         and the ground in forward flight. Image top = nose. Read by tools/gcs. -->
+    <link name="camera_link">
+      <pose relative_to="base_link">{fus_r + 0.02:.4f} 0 {z(CAMERA_STATION):.4f} 0 {math.radians(CAMERA_TILT_DEG):.4f} 0</pose>
+      <inertial><mass>0.001</mass><inertia><ixx>1e-5</ixx><iyy>1e-5</iyy><izz>1e-5</izz><ixy>0</ixy><ixz>0</ixz><iyz>0</iyz></inertia></inertial>
+      <sensor name="camera" type="camera">
+        <gz_frame_id>camera_link</gz_frame_id>
+        <topic>{CAMERA_TOPIC}</topic>
+        <update_rate>15</update_rate>
+        <camera>
+          <horizontal_fov>1.2</horizontal_fov>
+          <image><width>640</width><height>360</height><format>R8G8B8</format></image>
+          <clip><near>0.1</near><far>3000</far></clip>
+        </camera>
+        <always_on>1</always_on>
+      </sensor>
+    </link>
+    <joint name="camera_joint" type="fixed">
+      <parent>base_link</parent>
+      <child>camera_link</child>
     </joint>
 
     <!-- No Gazebo air_speed sensor: VtolDynamics publishes the airspeed (it knows the wind). -->

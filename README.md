@@ -22,6 +22,7 @@ Dayanak dokümanlar:
 | `sim/gazebo/vtol_dynamics/` | C++ 6-DOF Gazebo Harmonic eklentisi | var, SITL'de uçtu |
 | `sim/isaac/` | Isaac Lab ortamı ve PPO eğitimi | plan |
 | `px4/` | PX4 yaması, airframe, kurulum ve SITL betikleri | var |
+| `tools/gcs/` | Tarayıcı yer kontrol arayüzü: telemetri, mod geçişi, kamera, harita (`arayuz.bat`) | var |
 | `ros2_ws/` | ROS 2 Jazzy çalışma alanı (otonomi paketleri) | boş |
 | `world/` | DEM GLO-30 + OSM'den dünya üretimi | plan |
 

@@ -2,3 +2,4 @@
 *.png binary
 *.jpg binary
 *.tif binary
+*.bat text eol=crlf

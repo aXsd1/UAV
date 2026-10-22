@@ -58,6 +58,44 @@ Geçiş denemek için önerilen sıra: `param set MIS_TAKEOFF_ALT 30` →
 Gazebo'da aracı takip etmek için sol paneldeki varlık listesinde
 `vtol_p1_0`'a sağ tıklayıp **Follow** seçin.
 
+## 4b. Yer kontrol arayüzü (tarayıcıda) — denendi
+
+Telemetri, tek tıkla mod geçişi, harita ve gövde kamerası tek sayfada. Windows'ta
+proje klasöründeki **`arayuz.bat`**'a çift tıklayın: simülasyon penceresi, arayüz
+sunucusu penceresi ve tarayıcıda `http://localhost:8080` açılır.
+
+```powershell
+.\arayuz.bat            # varsayılan dünya
+.\arayuz.bat karabuk    # Karabük dünyası
+.\arayuz.bat -          # simülasyon zaten açıksa yalnız arayüz
+```
+
+Elle başlatmak için, simülasyon açıkken ikinci bir Ubuntu terminalinde:
+
+```bash
+cd /mnt/c/Users/erina/Desktop/Yeageth/workplace/UAV
+python3 -m tools.gcs
+```
+
+Ek paket gerekmez (pymavlink, Gazebo Python bağlantıları ve Pillow WSL kurulumunda var).
+Kamera, araç modelinin yeni sürümüyle gelir: model bu sürümden önce kurulduysa bir kez
+`bash px4/install.sh` çalıştırın.
+
+| Bölüm | Ne yapar |
+|---|---|
+| Üst şerit | Bağlantı, mod, askı / yatay uçuş durumu, motorlar, yerde / havada, batarya, GPS |
+| Kamera + HUD | Gövde altı kamerası (askıda ufka, yatay uçuşta yere bakar); yapay ufuk, hız, irtifa, yön |
+| Telemetri | Kalkışa göre irtifa, lidarla yerden yükseklik, deniz seviyesinden irtifa, eve uzaklık, yer ve hava hızı, dikey hız, yön, burun açısı, gaz, rüzgâr tahmini |
+| Uçuş | Kalk (irtifa seçilir), Askıda bekle, Yatay uçuşa geç, Askıya dön, Eve dön, İniş, İrtifa ve hız ayarı |
+| Harita | Araç izi ve kalkış noktası; haritaya tıklayıp **Buraya git** |
+| Manuel kontrol | Konum / İrtifa / Dengeli mod. Klavye: `W` `S` yüksel/alçal, `A` `D` dön, oklar ileri/geri/yanlara; oyun kolu da çalışır |
+| Rüzgâr | Hız, yön ve türbülans simülasyona anında uygulanır |
+
+Arayüz PX4'e MAVLink UDP 14540'tan bağlanır; QGroundControl 14550'de çalışmaya devam
+edebilir. Manuel modlardan birine geçince sanal kumanda açılır ve otomatik modlara
+dönünce de açık kalır. Açıkken arayüz sunucusu kapanırsa PX4 bunu kumanda kaybı sayıp
+güvenlik eylemine geçebilir (denenmedi); manuel uçuş bitince **Kumandayı kapat**'a basın.
+
 ## 5. Rüzgâr ekleyin — denendi
 
 Simülasyon açıkken **ikinci bir terminal** açın (`wsl -d Ubuntu-24.04 -u root`) ve:
