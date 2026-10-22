@@ -14,6 +14,7 @@ Pass criteria (simulation doc, "Test senaryoları"):
 from __future__ import annotations
 
 import math
+import os
 import threading
 import time
 
@@ -55,15 +56,24 @@ def hover_wind(sim: Sim, rng: np.random.Generator):
 
 
 def transition(sim: Sim, rng: np.random.Generator):
-    p = {"wind_m_s": float(rng.uniform(0, 8)), "wind_from_deg": float(rng.uniform(0, 360))}
+    lo, hi = (float(v) for v in os.environ.get("MC_WIND_RANGE", "0,8").split(","))  # e.g. MC_WIND_RANGE=6,8
+    p = {"wind_m_s": float(rng.uniform(lo, hi)), "wind_from_deg": float(rng.uniform(0, 360))}
     p["turbulence_m_s"] = 0.1 * p["wind_m_s"]
     sim.start()
     sim.publish("turbulence", "gz.msgs.Double", f"data: {p['turbulence_m_s']:.3f}")
     sim.wind(*_wind_vec(p["wind_m_s"], p["wind_from_deg"]))
     sim.takeoff(30)
-    sim.sleep_sim(5)
+    sim.sleep_sim(8)                        # weathervane settles, the lean shows the wind side
+    # Transition into the wind (Monte Carlo 2026-10-22: tail/crosswind transitions lost the most height).
+    up = sim.upwind_heading()
+    p["upwind_heading_deg"] = None if up is None else math.degrees(up)
+    if up is not None:
+        sim.param("WV_EN", 0)               # otherwise the weathervane turns the span back into the wind
+        p["faced_wind"] = sim.turn_to(up)
     sim.cmd("commander", "transition")
-    sim.sleep_sim(25)
+    sim.sleep_sim(8)
+    sim.param("WV_EN", 1)
+    sim.sleep_sim(17)
     sim.cmd("commander", "transition")
     sim.sleep_sim(12)
     landed = sim.land_and_wait(90)

@@ -8,6 +8,7 @@ from Gazebo's /stats, so they hold when the requested speed factor is not reache
 from __future__ import annotations
 
 import glob
+import math
 import os
 import re
 import shutil
@@ -193,6 +194,52 @@ class Sim:
         if not self.wait_for(lambda: self.altitude() > alt - 1.0, timeout_sim=alt / 1.5 + 30):
             raise SimError(f"takeoff to {alt} m not reached")
         self.sleep_sim(3)
+
+    def quaternion(self):
+        q = self.listen("vehicle_attitude").get("q", "")
+        vals = [float(v) for v in re.findall(r"-?[\d.]+(?:e-?\d+)?", q)]
+        return vals[:4] if len(vals) >= 4 else None
+
+    def upwind_heading(self, samples: int = 5, min_tilt_deg: float = 1.5):
+        """Average of several lean readings (gusts): unit vectors summed, so the direction is robust."""
+        sx = sy = 0.0
+        for k in range(samples):
+            h = self._upwind_once(min_tilt_deg)
+            if h is not None:
+                sx += math.cos(h)
+                sy += math.sin(h)
+            if k < samples - 1:
+                self.sleep_sim(0.5)
+        return math.atan2(sy, sx) if math.hypot(sx, sy) > 0.5 * samples * 0.5 else None
+
+    def _upwind_once(self, min_tilt_deg: float):
+        """Heading (rad, NED) that points the nose into the wind, from onboard data only: in hover the
+        vehicle leans into the wind, so the horizontal part of the thrust vector (-z body) points upwind.
+        None when the lean is too small to tell (calm air)."""
+        q = self.quaternion()
+        if not q:
+            return None
+        w, x, y, z = q
+        # third column of the body->NED rotation (body z axis in NED)
+        zx, zy, zz = 2 * (x * z + w * y), 2 * (y * z - w * x), 1 - 2 * (x * x + y * y)
+        tilt = math.degrees(math.acos(max(-1.0, min(1.0, zz))))
+        if tilt < min_tilt_deg:
+            return None
+        return math.atan2(-zy, -zx)
+
+    def heading(self) -> float:
+        h = self.listen("vehicle_local_position").get("heading")
+        return float(h) if h else float("nan")
+
+    def turn_to(self, yaw_rad: float, timeout_sim: float = 20.0) -> bool:
+        """Yaw in place with MAV_CMD_DO_REPOSITION (position NaN = keep, param4 = yaw in rad)."""
+        from pymavlink import mavutil
+        link = mavutil.mavlink_connection(f"udpout:127.0.0.1:{18570 + self.i}", source_system=255)
+        nan = float("nan")
+        link.mav.command_long_send(1, 1, mavutil.mavlink.MAV_CMD_DO_REPOSITION, 0,
+                                   -1, 0, 0, yaw_rad, nan, nan, nan)
+        err = lambda: abs((self.heading() - yaw_rad + math.pi) % (2 * math.pi) - math.pi)
+        return self.wait_for(lambda: err() < math.radians(10), timeout_sim=timeout_sim, poll_sim=1.0)
 
     def landed(self) -> bool:
         return self.listen("vehicle_land_detected").get("landed") == "True"

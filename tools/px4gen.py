@@ -49,6 +49,11 @@ def build(cfg: dict, aero: dict, rotor_rows: list[tuple[float, float, float]]) -
     # Hover moment of one vane axis at full deflection (N m); the hover matrix is normalised,
     # so only its ratio to the rotor torque (CT * KM) matters.
     vane_full = aero["hover_allocation"]["pitch_yaw_moment_per_vane_rad_nm"] * math.radians(vmax)
+    # Lidar position (hover body FRD z, from the CG towards the tail) and its reading when landed.
+    from tools.sdfgen import LIDAR_ABOVE_TAIL
+    h_cg = cfg["landing_gear"]["tail_end_station_m"] - aero["mass"]["cg_station_m"]
+    lidar_pos_z = h_cg - LIDAR_ABOVE_TAIL
+    lidar_min = LIDAR_ABOVE_TAIL
     hover_thr = 1.0 / tw  # thrust is linearised (THR_MDL_FAC 1), so normalised hover thrust = W / T_max
     # Fixed-wing speeds from the stall speed of the tables: PX4 must never fly near it.
     # The trim speed is at least 1.25 V_stall even if the design cruise speed is lower.
@@ -164,8 +169,8 @@ param set-default VT_ELEV_MC_LOCK 1
 # No rudder: fixed-wing yaw goes to the vanes through the differential-thrust path.
 param set-default VT_FW_DIFTHR_EN 1     # yaw only; pitch has the elevator
 param set-default VT_FW_DIFTHR_S_Y 1
-param set-default VT_ARSP_TRANS {v_min:.1f}
-param set-default VT_F_TRANS_DUR 3
+param set-default VT_ARSP_TRANS {1.2 * v_stall:.1f}   # 1.2 V_stall: 1.1 left too little margin (Monte Carlo 2026-10-22)
+param set-default VT_F_TRANS_DUR 4    # gentler pitch-over (Monte Carlo: pitch-rate departure at handover)
 param set-default VT_B_TRANS_DUR 5
 param set-default FW_THR_TRIM {fw_thr_trim:.2f}    # (cruise rpm / max rpm)^2 from the tables
 param set-default FW_THR_MAX 1.0
@@ -184,6 +189,14 @@ param set-default WV_AXIS 1
 param set-default WV_ROLL_MIN 2
 param set-default WV_YRATE_MAX 10
 param set-default MPC_LAND_SPEED 0.5
+
+# Landing lidar (tail, downward in hover): without it the height estimate was 0.6-1 m off at
+# touchdown, PX4 missed the ground contact and kept controlling on the legs -> tip-overs.
+param set-default EKF2_RNG_CTRL 1      # conditional: low and slow (takeoff/landing)
+param set-default EKF2_RNG_A_HMAX 10
+param set-default EKF2_RNG_A_VMAX 2
+param set-default EKF2_MIN_RNG {lidar_min:.2f}
+param set-default EKF2_RNG_POS_Z {lidar_pos_z:.2f}
 param set-default EKF2_FUSE_BETA 0
 """
 

@@ -16,6 +16,7 @@ from pathlib import Path
 from tools.aerogen import config
 
 ROOT = Path(__file__).resolve().parents[1]
+LIDAR_ABOVE_TAIL = 0.15  # m, lidar height above the leg tips (ground) when landed
 
 SENSORS = """
       <sensor name="imu_sensor" type="imu">
@@ -146,14 +147,30 @@ def build(cfg: dict, aero: dict, aero_dir: str) -> str:
 {vis}{col}{SENSORS}
     </link>
 
-    <include merge="true">
-      <uri>model://airspeed</uri>
-      <pose>0 0 {z(0.05):.4f} 0 -1.57079632679 0</pose>
-    </include>
-    <joint name="airspeed_joint" type="fixed">
+    <!-- Landing lidar at the tail end, looking along -z (down in hover). PX4's gz_bridge reads
+         link "lidar_sensor_link" / sensor "lidar"; this pose makes it DOWNWARD_FACING. -->
+    <link name="lidar_sensor_link">
+      <pose relative_to="base_link">0 0 {z_tail + LIDAR_ABOVE_TAIL:.4f} 0 1.57 0</pose>
+      <inertial><mass>0.001</mass><inertia><ixx>1e-5</ixx><iyy>1e-5</iyy><izz>1e-5</izz><ixy>0</ixy><ixz>0</ixz><iyz>0</iyz></inertia></inertial>
+      <sensor name="lidar" type="gpu_lidar">
+        <gz_frame_id>lidar_sensor_link</gz_frame_id>
+        <pose>0 0 0 3.14 0 0</pose>
+        <update_rate>50</update_rate>
+        <ray>
+          <scan><horizontal><samples>1</samples><resolution>1</resolution><min_angle>0</min_angle><max_angle>0</max_angle></horizontal>
+                <vertical><samples>1</samples><resolution>1</resolution><min_angle>0</min_angle><max_angle>0</max_angle></vertical></scan>
+          <range><min>0.05</min><max>40.0</max><resolution>0.01</resolution></range>
+          <noise><type>gaussian</type><mean>0</mean><stddev>0.02</stddev></noise>
+        </ray>
+        <always_on>1</always_on>
+      </sensor>
+    </link>
+    <joint name="lidar_sensor_joint" type="fixed">
       <parent>base_link</parent>
-      <child>airspeed_link</child>
+      <child>lidar_sensor_link</child>
     </joint>
+
+    <!-- No Gazebo air_speed sensor: VtolDynamics publishes the airspeed (it knows the wind). -->
 
     <plugin filename="VtolDynamics" name="vtol::VtolDynamics">
       <aero_dir>{aero_dir}</aero_dir>

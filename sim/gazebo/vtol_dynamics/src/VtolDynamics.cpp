@@ -20,8 +20,12 @@
 //          /model/<model>/wind          (gz.msgs.Vector3d, world ENU m/s, optional override)
 //          /model/<model>/turbulence    (gz.msgs.Double, gust sigma m/s per axis, Gauss-Markov, tau 1.5 s)
 //          /model/<model>/failure       (gz.msgs.StringMsg: "none", "motor <0|1>", "servo <0..4> stuck")
+// Output:  .../link/airspeed_link/sensor/air_speed/air_speed (gz.msgs.AirSpeed), the topic PX4's gz_bridge
+//          reads. Published here because Gazebo's own air_speed sensor does not see this plugin's wind
+//          (it reported ground speed as airspeed in every windy run).
 
 #include <array>
+#include <cmath>
 #include <random>
 #include <sstream>
 #include <memory>
@@ -31,6 +35,7 @@
 #include <gz/math/Pose3.hh>
 #include <gz/math/Vector3.hh>
 #include <gz/msgs/actuators.pb.h>
+#include <gz/msgs/air_speed.pb.h>
 #include <gz/msgs/double.pb.h>
 #include <gz/msgs/stringmsg.pb.h>
 #include <gz/msgs/vector3d.pb.h>
@@ -39,6 +44,7 @@
 #include <gz/sim/Model.hh>
 #include <gz/sim/System.hh>
 #include <gz/sim/Util.hh>
+#include <gz/sim/World.hh>
 #include <gz/transport/Node.hh>
 
 #include "vtol_dynamics/model.hpp"
@@ -120,6 +126,9 @@ public:
     };
     node_.Subscribe("/model/" + model_name + "/failure", fail_cb);
     rng_.seed(sdf->Get<unsigned>("seed", 1u).first);
+    const std::string world_name = gz::sim::World(gz::sim::worldEntity(ecm)).Name(ecm).value_or("default");
+    airspeed_pub_ = node_.Advertise<gz::msgs::AirSpeed>("/world/" + world_name + "/model/" + model_name +
+                                                        "/link/airspeed_link/sensor/air_speed/air_speed");
     gzmsg << "[VtolDynamics] loaded " << dir << " for " << model_name << "\n";
   }
 
@@ -182,6 +191,19 @@ public:
     in.rotor_accel = accel;
 
     const Output out = vehicle_->wrench(in);
+
+    // Pitot along the fixed-wing nose axis (body x), 20 Hz of sim time.
+    const double t_sim = std::chrono::duration<double>(info.simTime).count();
+    if (t_sim - last_airspeed_pub_ >= 0.05) {
+      last_airspeed_pub_ = t_sim;
+      const double u = std::max(0.0, in.v_air[0]);
+      gz::msgs::AirSpeed msg;
+      msg.mutable_header()->mutable_stamp()->set_sec(static_cast<int64_t>(t_sim));
+      msg.mutable_header()->mutable_stamp()->set_nsec(static_cast<int32_t>((t_sim - std::floor(t_sim)) * 1e9));
+      msg.set_diff_pressure(0.5 * vehicle_->params().rho * u * u + 0.5 * normal_(rng_));  // Pa, 0.5 Pa noise
+      msg.set_temperature(288.15);  // K
+      airspeed_pub_.Publish(msg);
+    }
     link_.AddWorldWrench(ecm, q.RotateVector(fw_to_flu(out.force)), q.RotateVector(fw_to_flu(out.moment)));
   }
 
@@ -214,6 +236,8 @@ private:
   std::array<bool, 2> motor_failed_{};
   std::array<bool, 5> servo_stuck_{}, stuck_pending_{};
   std::array<double, 5> stuck_value_{};
+  gz::transport::Node::Publisher airspeed_pub_;
+  double last_airspeed_pub_{-1.0};
 };
 
 }  // namespace vtol
