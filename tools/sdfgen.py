@@ -186,7 +186,7 @@ def build(cfg: dict, aero: dict, aero_dir: str) -> str:
         <update_rate>15</update_rate>
         <camera>
           <horizontal_fov>1.2</horizontal_fov>
-          <image><width>640</width><height>360</height><format>R8G8B8</format></image>
+          <image><width>1280</width><height>720</height><format>R8G8B8</format></image>
           <clip><near>0.1</near><far>3000</far></clip>
         </camera>
         <always_on>1</always_on>

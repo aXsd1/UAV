@@ -1,11 +1,11 @@
 @echo off
 rem Simulasyonu (PX4 + Gazebo) ve tarayici yer kontrol arayuzunu birlikte baslatir.
-rem   arayuz.bat            varsayilan dunya
-rem   arayuz.bat karabuk    Karabuk dunyasi
+rem   arayuz.bat            Karabuk dunyasi (uydu goruntusu, binalar, yollar)
+rem   arayuz.bat default    bos varsayilan dunya
 rem   arayuz.bat -          sadece arayuz (simulasyon zaten acik)
 title P1 yer kontrol arayuzu
 set WORLD=%1
-if "%WORLD%"=="" set WORLD=default
+if "%WORLD%"=="" set WORLD=karabuk
 set REPO=/mnt/c/Users/erina/Desktop/Yeageth/workplace/UAV
 
 if not "%WORLD%"=="-" start "P1 SITL (PX4 + Gazebo)" wsl -d Ubuntu-24.04 -u root -- env WORLD=%WORLD% bash %REPO%/px4/run_sitl.sh

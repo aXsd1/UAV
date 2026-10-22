@@ -10,20 +10,24 @@ WORLD=karabuk bash px4/run_sitl.sh
 ```
 
 - `fetch`: DEM penceresi AWS'deki bulut uyumlu GeoTIFF'ten yalnız gereken baytlar
-  okunarak, OSM verisi Overpass API'den indirilir (`world/data/`, repoya girmez).
+  okunarak, OSM binaları ve yol/akarsuları Overpass API'den (ana sunucu yanıt vermezse
+  yedeklerden), zemin dokusu Sentinel-2 cloudless 2016 mozaiğinden (EOX, 10 m, zoom 14
+  karoları) indirilir (`world/data/`, repoya girmez). Tek parça için `--only dem|buildings|features|imagery`.
 - `build`: arazi üçgen ağı (321 × 321, ~31 m; Gazebo heightmap'inde DART çarpışma
-  yüzeyi görselden ~9 m yukarıda kaldığı için ağ kullanılıyor), tüm binalar için tek OBJ ağ (yükseklik OSM
-  etiketinden, yoksa 9 m), yollar için görsel şeritler ve dünya SDF'i
+  yüzeyi görselden ~9 m yukarıda kaldığı için ağ kullanılıyor) ve üstüne kaplanan 2048 px uydu
+  dokusu, tüm binalar için tek OBJ ağ (yükseklik OSM
+  etiketinden, yoksa 9 m), yollar ve akarsular için araziyi izleyen görsel şeritler ve dünya SDF'i
   (`world/build/<ad>/`, repoya girmez). `spherical_coordinates` Gazebo
   orijinini gerçek konuma koyar; PX4'ün GNSS'i gerçek koordinatları görür.
 
 Varsayılan bölge: Karabük çevresi, 10 × 10 km (şehir merkezi, vadiler, açık arazi).
 Kalkış noktası 41,1639 / 32,6443 (275 m, eğim < 1°, en yakın bina 645 m).
-Durum (2026-10-21): DEM ve 3313 bina indirildi; yollar Overpass yedek sunucusu
-zaman aşımına uğradığı için henüz yok.
+Durum (2026-10-23): DEM, uydu dokusu, 3313 bina, 1725 yol ve 8 akarsu.
 Test sahası seçilince kendi fotogrametri uçuşumuzla (OpenDroneMap, 2–5 cm) dijital
 ikiz eklenecek.
 
-Lisans: harita verisi © OpenStreetMap katkıcıları (ODbL); yükseklik verisi
+Lisans: harita verisi © OpenStreetMap katkıcıları (ODbL); zemin dokusu Sentinel-2 cloudless
+2016 by EOX IT Services GmbH (Copernicus Sentinel 2016 verisinden değiştirilmiş), CC BY 4.0
+(sonraki yılların mozaikleri ticari olmayan lisanslı olduğu için 2016 kullanılıyor); yükseklik verisi
 © DLR e.V. 2010–2014 ve © Airbus Defence and Space GmbH 2014–2018, Copernicus
 programı tarafından sağlanmıştır.

@@ -65,8 +65,8 @@ proje klasöründeki **`arayuz.bat`**'a çift tıklayın: simülasyon penceresi,
 sunucusu penceresi ve tarayıcıda `http://localhost:8080` açılır.
 
 ```powershell
-.\arayuz.bat            # varsayılan dünya
-.\arayuz.bat karabuk    # Karabük dünyası
+.\arayuz.bat            # Karabük dünyası
+.\arayuz.bat default    # boş varsayılan dünya
 .\arayuz.bat -          # simülasyon zaten açıksa yalnız arayüz
 ```
 
@@ -115,8 +115,9 @@ Araç rüzgârda kanat açıklığını rüzgâra çevirir (weathervane) ve hafi
 
 ## 5b. Karabük haritasında uçun — denendi
 
-Gerçek arazi (Copernicus DEM) ve 3313 bina (OpenStreetMap) içeren 10 × 10 km
-Karabük dünyası. Kalkış noktası 41,1639 K / 32,6443 D, 275 m; en yakın bina 645 m.
+Gerçek arazi (Copernicus DEM), Sentinel-2 uydu görüntüsü (10 m), 3313 bina, 1725 yol ve
+8 akarsu (OpenStreetMap) içeren 10 × 10 km Karabük dünyası. Kalkış noktası 41,1639 K /
+32,6443 D, 275 m; en yakın bina 645 m. `arayuz.bat` bu dünyayla açılır.
 
 ```bash
 WORLD=karabuk bash px4/run_sitl.sh

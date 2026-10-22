@@ -7,7 +7,7 @@ from pathlib import Path
 
 import numpy as np
 
-from tools.worldgen import building_height, enu, triangulate, write_png16
+from tools.worldgen import building_height, ccw, enu, triangulate, write_png16
 
 
 def poly_area(pts):
@@ -20,6 +20,13 @@ class Triangulate(unittest.TestCase):
         self.assertEqual(len(tris), len(pts) - 2)
         covered = sum(abs(poly_area([pts[a], pts[b], pts[c]])) for a, b, c in tris)
         self.assertAlmostEqual(covered, abs(poly_area(pts)), places=6)
+
+    def test_clockwise_outline_is_reordered(self):
+        # OSM ways come in either direction; a clockwise outline gave buildings no roofs
+        cw = [(0, 1), (1, 1), (1, 0), (0, 0)]
+        self.assertGreater(poly_area(ccw(cw)), 0)
+        self.check(ccw(cw))
+        self.assertEqual(ccw(cw[::-1]), cw[::-1])
 
     def test_square(self):
         self.check([(0, 0), (1, 0), (1, 1), (0, 1)])
