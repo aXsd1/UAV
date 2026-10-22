@@ -59,13 +59,18 @@ def transition(sim: Sim, rng: np.random.Generator):
     lo, hi = (float(v) for v in os.environ.get("MC_WIND_RANGE", "0,8").split(","))  # e.g. MC_WIND_RANGE=6,8
     p = {"wind_m_s": float(rng.uniform(lo, hi)), "wind_from_deg": float(rng.uniform(0, 360))}
     p["turbulence_m_s"] = 0.1 * p["wind_m_s"]
+    # MC_LEGACY=1: settings before the 2026-10-22 fixes (comparison runs on the same seeds)
+    legacy = os.environ.get("MC_LEGACY") == "1"
     sim.start()
+    if legacy:
+        for name, value in (("VT_ARSP_TRANS", 19.1), ("VT_F_TRANS_DUR", 3), ("EKF2_RNG_CTRL", 0)):
+            sim.param(name, value)
     sim.publish("turbulence", "gz.msgs.Double", f"data: {p['turbulence_m_s']:.3f}")
     sim.wind(*_wind_vec(p["wind_m_s"], p["wind_from_deg"]))
     sim.takeoff(30)
     sim.sleep_sim(8)                        # weathervane settles, the lean shows the wind side
     # Transition into the wind (Monte Carlo 2026-10-22: tail/crosswind transitions lost the most height).
-    up = sim.upwind_heading()
+    up = None if legacy else sim.upwind_heading()
     p["upwind_heading_deg"] = None if up is None else math.degrees(up)
     if up is not None:
         sim.param("WV_EN", 0)               # otherwise the weathervane turns the span back into the wind
