@@ -21,6 +21,31 @@ WORK = Path(os.environ.get("WORK", str(Path.home() / "uav")))
 PX4_DIR = WORK / "PX4-Autopilot"
 BUILD = PX4_DIR / "build" / "px4_sitl_default"
 PLUGIN_DIR = WORK / "build" / "vtol_dynamics"
+GZ_MODELS = PX4_DIR / "Tools" / "simulation" / "gz" / "models"
+MC_MODELS = WORK / "mc_models"   # vehicle model without the belly camera (rendering it slows the runs)
+
+
+def mc_models() -> Path:
+    """Copy of the installed vtol_p1 model without camera_link / camera_joint. Rebuilt when the
+    installed model changes; written to a temp dir and renamed, so parallel workers can call it."""
+    src = GZ_MODELS / "vtol_p1"
+    dst = MC_MODELS / "vtol_p1"
+    if (dst / "model.sdf").exists() and (dst / "model.sdf").stat().st_mtime >= (src / "model.sdf").stat().st_mtime:
+        return MC_MODELS
+    sdf = (src / "model.sdf").read_text()
+    sdf = re.sub(r"\s*<!-- Belly camera.*?</joint>", "", sdf, flags=re.S)
+    if "camera" in sdf:
+        raise SimError("camera block not removed from model.sdf")
+    tmp = MC_MODELS / f".tmp{os.getpid()}"
+    shutil.rmtree(tmp, ignore_errors=True)
+    shutil.copytree(src, tmp)
+    (tmp / "model.sdf").write_text(sdf)
+    shutil.rmtree(dst, ignore_errors=True)
+    try:
+        os.rename(tmp, dst)
+    except OSError:                  # another worker renamed its copy first
+        shutil.rmtree(tmp, ignore_errors=True)
+    return MC_MODELS
 
 
 class SimError(RuntimeError):
@@ -57,7 +82,12 @@ class Sim:
             shutil.rmtree(self.dir)
         self.dir.mkdir(parents=True)
         # PX4's gz rc script sources ./gz_env.sh (model/world paths) from its working directory.
-        shutil.copy(BUILD / "rootfs" / "gz_env.sh", self.dir / "gz_env.sh")
+        # The vehicle is spawned from $PX4_GZ_MODELS; point it at the camera-less copy (MC_CAMERA=1 keeps it).
+        env_sh = (BUILD / "rootfs" / "gz_env.sh").read_text()
+        if os.environ.get("MC_CAMERA") != "1":
+            env_sh = re.sub(r"export PX4_GZ_MODELS=.*", f"export PX4_GZ_MODELS={mc_models()}", env_sh)
+            env_sh = env_sh.replace("$PX4_GZ_MODELS:", f"$PX4_GZ_MODELS:{GZ_MODELS}:")
+        (self.dir / "gz_env.sh").write_text(env_sh)
         for f in glob.glob(f"/tmp/px4_lock-{self.i}") + glob.glob(f"/tmp/px4-sock-{self.i}"):
             os.remove(f)
         self.log = open(self.dir / "px4.log", "w")

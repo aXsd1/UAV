@@ -14,6 +14,7 @@ import argparse
 import json
 import math
 import multiprocessing as mp
+import os
 import time
 import traceback
 from datetime import datetime, timezone
@@ -63,12 +64,17 @@ def urban_spawn_pose() -> str:
     raise RuntimeError("no open urban spot found")
 
 
+def variant() -> str | None:
+    """Settings variant of this set (MC_LEGACY=1: settings before the 2026-10-22 fixes)."""
+    return "legacy" if os.environ.get("MC_LEGACY") == "1" else None
+
+
 def completed_indices(scenario: str, seed: int) -> set[int]:
     done = set()
     for f in (ROOT / "runs" / "montecarlo").glob(f"*_{scenario}/results.jsonl"):
         for line in f.read_text(encoding="utf-8").splitlines():
             r = json.loads(line)
-            if r.get("scenario") == scenario and r["seed"] - r["index"] == seed and "error" not in r:
+            if r.get("scenario") == scenario and r["seed"] - r["index"] == seed and "error" not in r                     and r.get("variant") == variant():
                 done.add(r["index"])
     return done
 
@@ -82,6 +88,8 @@ def worker(args):
               run_dir=Path(f"/tmp/mc/{name}_{index}"))
     t0 = time.time()
     rec = {"scenario": name, "index": index, "seed": seed + index}
+    if variant():
+        rec["variant"] = variant()
     for attempt in (1, 2):  # a harness failure (not a vehicle failure) is retried once with the same seed
         rng = np.random.default_rng(seed + index)
         try:
