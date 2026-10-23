@@ -33,8 +33,12 @@ bash px4/run_sitl.sh
   ve araç (dik duran gri gövde, mavi kanal, siyah kanat) zeminde görünür.
 - Terminalde `pxh>` istemi çıkar ve `Ready for takeoff!` yazar.
 - PX4 kodunda değişiklik varsa ilk açılışta derleme birkaç dakika sürebilir.
+- Dünya varsayılan olarak Karabük'tür (bölüm 5b). PX4'ün boş dünyası için
+  `WORLD=default bash px4/run_sitl.sh`; orada kalkış noktası Zürih'tir.
+- Monte Carlo seti çalışırken başlatmayın: ikisi de 0 numaralı PX4 örneğini ve aynı
+  portları kullanır, run.bat hata verir ve koşulardan biri bozulabilir.
 
-Tek komutla, doğrudan PowerShell'den de başlatılabilir:
+Tek komutla, doğrudan PowerShell'den (ya da proje klasöründeki `run.bat` ile) de başlatılabilir:
 
 ```powershell
 wsl -d Ubuntu-24.04 -u root -- bash /mnt/c/Users/erina/Desktop/Yeageth/workplace/UAV/px4/run_sitl.sh
@@ -121,7 +125,7 @@ içeren 10 × 10 km Karabük dünyası. Kalkış noktası 41,1639 K /
 32,6443 D, 275 m; en yakın bina 645 m. `arayuz.bat` bu dünyayla açılır.
 
 ```bash
-WORLD=karabuk bash px4/run_sitl.sh
+bash px4/run_sitl.sh            # WORLD=karabuk varsayılan
 ```
 
 PX4'ün GPS'i gerçek koordinatları görür. Kalkış noktasının 300 m çevresinde arazi

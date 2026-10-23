@@ -6,7 +6,7 @@ ve OpenStreetMap bina/yol verisinden bir Gazebo dünyası üretir:
 ```bash
 python3 tools/worldgen.py fetch --bbox 41.145 32.580 41.235 32.700 --imagery esri
 python3 tools/worldgen.py build --bbox 41.145 32.580 41.235 32.700 --origin <enlem> <boylam> --name karabuk
-WORLD=karabuk bash px4/run_sitl.sh
+bash px4/run_sitl.sh            # WORLD=karabuk varsayılan
 ```
 
 - `fetch`: DEM penceresi AWS'deki bulut uyumlu GeoTIFF'ten yalnız gereken baytlar
