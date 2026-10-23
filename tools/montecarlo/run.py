@@ -15,6 +15,7 @@ import json
 import math
 import multiprocessing as mp
 import os
+import re
 import time
 import traceback
 from datetime import datetime, timezone
@@ -103,6 +104,7 @@ def worker(args):
                        attempts=attempt)
             sim.stop()
     rec["wall_s"] = round(time.time() - t0, 1)
+    rec["px4_warnings"] = px4_warnings(sim)
     with open(out_dir / "results.jsonl", "a", encoding="utf-8") as fh:  # O_APPEND: one line per run
         fh.write(json.dumps(rec, ensure_ascii=False, default=str) + "\n")
     print(f"{name} #{index}: {'PASS' if rec.get('passed') else 'n/a' if rec.get('passed') is None else 'FAIL'} "
@@ -110,9 +112,29 @@ def worker(args):
     log = sim.ulog()
     if log:
         dst = out_dir / "logs" / f"{name}_{index}.ulg"
-        dst.parent.mkdir(exist_ok=True)
-        dst.write_bytes(log.read_bytes())
+        try:  # the result line is what counts; a lost log must not stop the set
+            dst.parent.mkdir(exist_ok=True)
+            dst.write_bytes(log.read_bytes())
+        except OSError as e:
+            print(f"{name} #{index}: log not copied ({e})", flush=True)
     return rec
+
+
+def px4_warnings(sim: Sim) -> list[str]:
+    """WARN/ERROR lines PX4 printed during the run (e.g. "Compass needs calibration - Land now!",
+    failsafe actions), deduplicated, without timestamps and colour codes."""
+    try:
+        text = (sim.dir / "px4.log").read_text(errors="ignore")
+    except OSError:
+        return []
+    out = []
+    for ln in text.splitlines():
+        ln = re.sub(r"\x1b\[[0-9;]*m", "", ln).strip()
+        if re.match(r"(WARN|ERROR)\b", ln) or "Failsafe" in ln or "failsafe" in ln:
+            ln = re.sub(r"^(WARN|ERROR)\s*\[[^\]]*\]\s*", r"\1 ", ln)
+            if ln not in out:
+                out.append(ln)
+    return out[:30]
 
 
 def summarize(out_dir: Path, records):

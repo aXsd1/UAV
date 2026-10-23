@@ -9,7 +9,8 @@
 # (sim.py), flat "default" world except urban_landing (Karabük).
 # Resumable: completed runs (same scenario, seed and variant) are skipped, so after a stop it
 # continues with the first unfinished run; watchdog.ps1 restarts it. A set whose runner exits
-# with an error is started again (at most 5 times). Writes runs/montecarlo/OVERNIGHT_DONE at the end.
+# with an error is started again (at most 5 times); if one still fails, the script exits without
+# OVERNIGHT_DONE and the watchdog restarts it. OVERNIGHT_DONE only when every set completed.
 #   bash tools/montecarlo/overnight.sh
 set -u
 cd "$(dirname "${BASH_SOURCE[0]}")/../.."
@@ -25,13 +26,19 @@ mc() {  # mc <scenario> <n> <seed>; environment (MC_*) is passed through
     echo "runner exited with an error ($1, try $try), starting again $(date -Is)"
     sleep 30
   done
+  FAILED=1
 }
 
+FAILED=0
 echo "start $(date -Is)"
 MC_WIND_RANGE=0,8 mc transition "${N_TRANSITION:-1000}" 4000
 MC_LEGACY=1 MC_WIND_RANGE=6,8 mc transition "${N_LEGACY:-100}" 3000
 for s in hover_wind actuator_failure link_loss gnss_loss urban_landing; do
   mc "$s" "${N_OTHER:-50}" 5000
 done
+if [ "$FAILED" = 1 ]; then  # e.g. /mnt/c I/O errors: exit without DONE, the watchdog starts it again
+  echo "a set did not complete, exiting for a restart $(date -Is)"
+  exit 1
+fi
 echo "end $(date -Is)"
 date -Is > "$DONE"
