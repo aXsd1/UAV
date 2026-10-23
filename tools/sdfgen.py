@@ -11,15 +11,13 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
 from pathlib import Path
 
 from tools.aerogen import config
 
 ROOT = Path(__file__).resolve().parents[1]
 LIDAR_ABOVE_TAIL = 0.15  # m, lidar height above the leg tips (ground) when landed
-CAMERA_STATION = 0.30    # m from the nose
-CAMERA_TILT_DEG = 20.0   # belly camera tilt towards the tail
+CAMERA_AHEAD = 0.03      # m, nose camera in front of the nose tip
 CAMERA_TOPIC = "/vtol/camera"
 
 SENSORS = """
@@ -174,11 +172,11 @@ def build(cfg: dict, aero: dict, aero_dir: str) -> str:
       <child>lidar_sensor_link</child>
     </joint>
 
-    <!-- Belly camera (V-BAT style payload): looks out of the fixed-wing belly (+x), tilted
-         {CAMERA_TILT_DEG:.0f} deg towards the tail, so it sees the horizon slightly below level in hover
-         and the ground in forward flight. Image top = nose. Read by tools/gcs. -->
+    <!-- Nose camera: looks out of the nose (+z), so straight ahead in forward flight and up in
+         hover. Image top = fixed-wing up (-x). Read by tools/gcs; tools/montecarlo/sim.py strips
+         this block (from this comment to the camera joint) for the runs. -->
     <link name="camera_link">
-      <pose relative_to="base_link">{fus_r + 0.02:.4f} 0 {z(CAMERA_STATION):.4f} 0 {math.radians(CAMERA_TILT_DEG):.4f} 0</pose>
+      <pose relative_to="base_link">0 0 {z(0.0) + CAMERA_AHEAD:.4f} 0 -1.5708 0</pose>
       <inertial><mass>0.001</mass><inertia><ixx>1e-5</ixx><iyy>1e-5</iyy><izz>1e-5</izz><ixy>0</ixy><ixz>0</ixz><iyz>0</iyz></inertia></inertial>
       <sensor name="camera" type="camera">
         <gz_frame_id>camera_link</gz_frame_id>

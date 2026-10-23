@@ -23,10 +23,15 @@ from tools.gcs.vehicle import Vehicle
 STATIC = Path(__file__).resolve().parent / "static"
 
 
+SERVOS = 5  # VtolDynamics: 0 vane pitch, 1 vane yaw, 2 left elevon, 3 right elevon, 4 tail elevator
+
+
 class Gazebo:
-    """Camera and wind over Gazebo transport; absent (None) when the bindings are missing."""
+    """Camera, wind and actuator commands over Gazebo transport; absent (None) when the bindings
+    are missing."""
 
     def __init__(self, model: str, camera_topic: str):
+        from gz.msgs10.actuators_pb2 import Actuators
         from gz.msgs10.double_pb2 import Double
         from gz.msgs10.vector3d_pb2 import Vector3d
         from gz.transport13 import Node
@@ -39,6 +44,29 @@ class Gazebo:
         self.turb_pub = self.node.advertise(f"/model/{model}/turbulence", Double)
         self.camera = Camera(camera_topic)
         self.wind = {"speed": 0.0, "from_deg": 0.0, "turbulence": 0.0}
+        # What PX4's gz_bridge commands (the plugin adds servo rate limits and motor lag on top).
+        self.servo_rad = [None] * SERVOS
+        self.motor_rad_s: list = []
+        self.t_act = 0.0
+        for i in range(SERVOS):
+            self.node.subscribe(Double, f"/model/{model}/servo_{i}", self._servo_cb(i))
+        self.node.subscribe(Actuators, f"/{model}/command/motor_speed", self._on_motors)
+
+    def _servo_cb(self, i):
+        def cb(msg):
+            self.servo_rad[i] = msg.data
+            self.t_act = time.time()
+        return cb
+
+    def _on_motors(self, msg):
+        self.motor_rad_s = list(msg.velocity)
+        self.t_act = time.time()
+
+    def actuators(self):
+        if time.time() - self.t_act > 2.0:
+            return None
+        return {"servo_deg": [None if v is None else math.degrees(v) for v in self.servo_rad],
+                "motor_rpm": [v * 60 / (2 * math.pi) for v in self.motor_rad_s]}
 
     def set_wind(self, speed: float, from_deg: float, turbulence: float):
         # "from" direction (meteorological), world ENU: air moves towards from_deg + 180
@@ -117,6 +145,7 @@ def make_handler(vehicle: Vehicle, gz: Gazebo | None):
                         since = s["log"][-1]["seq"]
                     s["camera"] = bool(gz and gz.camera.alive())
                     s["wind_set"] = gz.wind if gz else None
+                    s["act"] = gz.actuators() if gz else None
                     self.wfile.write(b"data: " + json.dumps(s).encode() + b"\n\n")
                     self.wfile.flush()
                     time.sleep(0.1)

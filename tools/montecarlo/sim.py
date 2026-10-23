@@ -22,7 +22,7 @@ PX4_DIR = WORK / "PX4-Autopilot"
 BUILD = PX4_DIR / "build" / "px4_sitl_default"
 PLUGIN_DIR = WORK / "build" / "vtol_dynamics"
 GZ_MODELS = PX4_DIR / "Tools" / "simulation" / "gz" / "models"
-MC_MODELS = WORK / "mc_models"   # vehicle model without the belly camera (rendering it slows the runs)
+MC_MODELS = WORK / "mc_models"   # vehicle model without the camera (rendering it slows the runs)
 
 
 def mc_models() -> Path:
@@ -33,7 +33,7 @@ def mc_models() -> Path:
     if (dst / "model.sdf").exists() and (dst / "model.sdf").stat().st_mtime >= (src / "model.sdf").stat().st_mtime:
         return MC_MODELS
     sdf = (src / "model.sdf").read_text()
-    sdf = re.sub(r"\s*<!-- Belly camera.*?</joint>", "", sdf, flags=re.S)
+    sdf = re.sub(r"\s*<!-- (?:Belly|Nose) camera.*?</joint>", "", sdf, flags=re.S)
     if "camera" in sdf:
         raise SimError("camera block not removed from model.sdf")
     tmp = MC_MODELS / f".tmp{os.getpid()}"

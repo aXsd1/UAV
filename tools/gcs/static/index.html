@@ -54,6 +54,20 @@ button:disabled { opacity: .45; cursor: default; }
 input[type=number] { width: 74px; background: var(--panel2); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 6px; font: inherit; }
 input[type=range] { flex: 1; min-width: 100px; }
 #map { height: 300px; border-radius: 8px; }
+.act { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+.duct { flex: none; }
+.duct-ring { fill: var(--panel2); stroke: var(--line); stroke-width: 2; }
+.duct-mid { fill: none; stroke: var(--line); stroke-dasharray: 3 3; }
+.duct-axis { stroke: var(--line); }
+.duct-dot { fill: var(--accent); }
+.bars { flex: 1; min-width: 240px; display: grid; gap: 6px; }
+.bar { display: grid; grid-template-columns: 112px 1fr 62px; gap: 8px; align-items: center; font-size: 12.5px; }
+.bar .k { color: var(--muted); }
+.bar .v { text-align: right; font-variant-numeric: tabular-nums; }
+.bar .track { position: relative; height: 10px; background: var(--panel2); border-radius: 5px; }
+.bar .track i { position: absolute; top: 0; bottom: 0; background: var(--accent); border-radius: 5px; }
+.bar .track b { position: absolute; top: -2px; bottom: -2px; left: 50%; width: 1px; background: var(--muted); }
+.bar.motor .track i { background: var(--fw); }
 #log { height: 150px; overflow-y: auto; font: 12.5px/1.4 ui-monospace, Consolas, monospace; background: var(--panel2); border-radius: 8px; padding: 6px 8px; }
 #log .e3, #log .e2, #log .e1, #log .e0 { color: var(--bad); }
 #log .e4 { color: var(--warn); }
@@ -105,6 +119,23 @@ kbd { background: var(--panel2); border: 1px solid var(--line); border-bottom-wi
         <div class="tile"><div class="k">Rüzgâr tahmini</div><div class="v" id="t-wind">—</div></div>
         <div class="tile"><div class="k">Batarya</div><div class="v" id="t-bat">—</div></div>
       </div>
+    </div>
+
+    <div class="card">
+      <h2>İtki vektörleme ve kumanda yüzeyleri <span class="hint" style="text-transform:none;letter-spacing:0">(PX4'ün servo ve motor komutları)</span></h2>
+      <div class="act">
+        <div class="duct" title="Kanal çıkışı: vane'lerin itkiyi saptırdığı yön">
+          <svg viewBox="-60 -60 120 120" width="150" height="150">
+            <circle r="56" class="duct-ring"/>
+            <circle r="28" class="duct-mid"/>
+            <line x1="-56" y1="0" x2="56" y2="0" class="duct-axis"/><line x1="0" y1="-56" x2="0" y2="56" class="duct-axis"/>
+            <circle id="vane-dot" r="7" class="duct-dot"/>
+          </svg>
+          <div class="hint" style="text-align:center">Vane'ler (±20°)<br>yatay: sapma · dikey: yunuslama</div>
+        </div>
+        <div class="bars" id="act-bars"></div>
+      </div>
+      <div class="hint" id="act-none">Servo bilgisi bekleniyor (simülasyon çalışıyor mu?)</div>
     </div>
 
     <div class="card">
@@ -271,7 +302,41 @@ function update() {
     const L = $("log"); L.append(div); L.scrollTop = L.scrollHeight;
     while (L.children.length > 200) L.firstChild.remove();
   }
+  updateActuators();
   updateMap();
+}
+
+// ---------- thrust vectoring / control surfaces ----------
+// servo order from VtolDynamics: vane pitch, vane yaw, left elevon, right elevon, tail elevator
+const SERVO_ROWS = [["Vane yunuslama", 0, 20], ["Vane sapma", 1, 20], ["Sol elevon", 2, 25], ["Sağ elevon", 3, 25], ["Kuyruk elevatörü", 4, 25]];
+const MOTOR_ROWS = [["Üst motor", 0], ["Alt motor", 1]];
+const MOTOR_MAX_RPM = 1047 * 60 / (2 * Math.PI);  // SIM_GZ_EC_MAX = 1047 rad/s
+(function buildBars() {
+  const box = $("act-bars");
+  for (const [name] of SERVO_ROWS) box.insertAdjacentHTML("beforeend",
+    `<div class="bar"><span class="k">${name}</span><span class="track"><b></b><i></i></span><span class="v">—</span></div>`);
+  for (const [name] of MOTOR_ROWS) box.insertAdjacentHTML("beforeend",
+    `<div class="bar motor"><span class="k">${name}</span><span class="track"><i></i></span><span class="v">—</span></div>`);
+})();
+function updateActuators() {
+  const a = S.act;
+  $("act-none").style.display = a ? "none" : "block";
+  const rows = $("act-bars").children;
+  SERVO_ROWS.forEach(([, i, lim], k) => {
+    const v = a && a.servo_deg[i], f = v == null ? 0 : Math.max(-1, Math.min(1, v / lim));
+    const bar = rows[k].querySelector("i");
+    bar.style.left = (50 + Math.min(0, f) * 50) + "%"; bar.style.width = (Math.abs(f) * 50) + "%";
+    rows[k].querySelector(".v").textContent = v == null ? "—" : `${v >= 0 ? "+" : ""}${v.toFixed(1)}°`;
+  });
+  MOTOR_ROWS.forEach(([, i], k) => {
+    const row = rows[SERVO_ROWS.length + k], v = a && a.motor_rpm[i];
+    row.querySelector("i").style.width = (v == null ? 0 : Math.min(1, v / MOTOR_MAX_RPM) * 100) + "%";
+    row.querySelector(".v").textContent = v == null ? "—" : `${Math.round(v)} rpm`;
+  });
+  const p = a && a.servo_deg[0], y = a && a.servo_deg[1];
+  const dot = $("vane-dot");
+  dot.setAttribute("cx", y == null ? 0 : Math.max(-1, Math.min(1, y / 20)) * 52);
+  dot.setAttribute("cy", p == null ? 0 : -Math.max(-1, Math.min(1, p / 20)) * 52);
 }
 
 function connectStream() {
@@ -297,7 +362,7 @@ function drawHud() {
   const W = r.width, H = r.height; g.clearRect(0, 0, W, H);
   const a = attitude();
   if (hudOn && a) {
-    const cx = W / 2, cy = H / 2, ppd = H / 60;   // pixels per degree of pitch
+    const cx = W / 2, cy = H / 2, ppd = H / 42;   // pixels per degree: the nose camera sees 42 deg vertically
     g.save(); g.translate(cx, cy); g.rotate(-a.roll);
     const off = a.pitch * R2D * ppd;
     g.strokeStyle = "rgba(120,255,160,.85)"; g.fillStyle = "rgba(120,255,160,.85)"; g.lineWidth = 1.5;

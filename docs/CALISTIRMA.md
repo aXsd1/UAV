@@ -84,7 +84,8 @@ Kamera, araç modelinin yeni sürümüyle gelir: model bu sürümden önce kurul
 | Bölüm | Ne yapar |
 |---|---|
 | Üst şerit | Bağlantı, mod, askı / yatay uçuş durumu, motorlar, yerde / havada, batarya, GPS |
-| Kamera + HUD | Gövde altı kamerası (askıda ufka, yatay uçuşta yere bakar); yapay ufuk, hız, irtifa, yön |
+| Kamera + HUD | Burun kamerası (yatay uçuşta ileri, askıda yukarı bakar); yapay ufuk, hız, irtifa, yön |
+| İtki vektörleme | Vane'lerin itkiyi saptırma yönü (daire), iki vane, sol/sağ elevon ve kuyruk elevatörü açısı, iki motorun devri. PX4'ün komutları; servo hız sınırı yüzünden gerçek açı bir an geriden gelebilir |
 | Telemetri | Kalkışa göre irtifa, lidarla yerden yükseklik, deniz seviyesinden irtifa, eve uzaklık, yer ve hava hızı, dikey hız, yön, burun açısı, gaz, rüzgâr tahmini |
 | Uçuş | Kalk (irtifa seçilir), Askıda bekle, Yatay uçuşa geç, Askıya dön, Eve dön, İniş, İrtifa ve hız ayarı |
 | Harita | Araç izi ve kalkış noktası; haritaya tıklayıp **Buraya git** (o anki irtifa korunur; irtifayı "İrtifa" alanıyla ayrıca değiştirin) |
