@@ -73,8 +73,11 @@ def variant() -> str | None:
 def completed_indices(scenario: str, seed: int) -> set[int]:
     done = set()
     for f in (ROOT / "runs" / "montecarlo").glob(f"*_{scenario}/results.jsonl"):
-        for line in f.read_text(encoding="utf-8").splitlines():
-            r = json.loads(line)
+        for line in f.read_text(encoding="utf-8", errors="ignore").splitlines():
+            try:
+                r = json.loads(line)
+            except json.JSONDecodeError:  # e.g. a line cut short when the disk was full
+                continue
             if r.get("scenario") == scenario and r["seed"] - r["index"] == seed and "error" not in r                     and r.get("variant") == variant():
                 done.add(r["index"])
     return done
