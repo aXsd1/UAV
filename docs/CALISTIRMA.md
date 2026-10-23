@@ -87,7 +87,7 @@ Kamera, araç modelinin yeni sürümüyle gelir: model bu sürümden önce kurul
 | Kamera + HUD | Gövde altı kamerası (askıda ufka, yatay uçuşta yere bakar); yapay ufuk, hız, irtifa, yön |
 | Telemetri | Kalkışa göre irtifa, lidarla yerden yükseklik, deniz seviyesinden irtifa, eve uzaklık, yer ve hava hızı, dikey hız, yön, burun açısı, gaz, rüzgâr tahmini |
 | Uçuş | Kalk (irtifa seçilir), Askıda bekle, Yatay uçuşa geç, Askıya dön, Eve dön, İniş, İrtifa ve hız ayarı |
-| Harita | Araç izi ve kalkış noktası; haritaya tıklayıp **Buraya git** |
+| Harita | Araç izi ve kalkış noktası; haritaya tıklayıp **Buraya git** (o anki irtifa korunur; irtifayı "İrtifa" alanıyla ayrıca değiştirin) |
 | Manuel kontrol | Konum / İrtifa / Dengeli mod. Klavye: `W` `S` yüksel/alçal, `A` `D` dön, oklar ileri/geri/yanlara; oyun kolu da çalışır |
 | Rüzgâr | Hız, yön ve türbülans simülasyona anında uygulanır |
 
@@ -115,8 +115,8 @@ Araç rüzgârda kanat açıklığını rüzgâra çevirir (weathervane) ve hafi
 
 ## 5b. Karabük haritasında uçun — denendi
 
-Gerçek arazi (Copernicus DEM), Sentinel-2 uydu görüntüsü (10 m), 3313 bina, 1725 yol ve
-8 akarsu (OpenStreetMap) içeren 10 × 10 km Karabük dünyası. Kalkış noktası 41,1639 K /
+Gerçek arazi (Copernicus DEM), Esri uydu görüntüsü (~1 m) ve 3313 bina (OpenStreetMap)
+içeren 10 × 10 km Karabük dünyası. Kalkış noktası 41,1639 K /
 32,6443 D, 275 m; en yakın bina 645 m. `arayuz.bat` bu dünyayla açılır.
 
 ```bash

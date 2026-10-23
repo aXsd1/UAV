@@ -1,7 +1,7 @@
 """Build a Gazebo world from Copernicus DEM GLO-30 + OpenStreetMap (run inside WSL).
 
 python3 tools/worldgen.py fetch  --bbox 41.145 32.580 41.235 32.700   # downloads into world/data/
-python3 tools/worldgen.py fetch  --only imagery                         # one part: dem|buildings|features|imagery
+python3 tools/worldgen.py fetch  --only imagery --imagery esri         # one part: dem|buildings|features|imagery
 python3 tools/worldgen.py build  --bbox ... --origin LAT LON --name karabuk
 
 fetch: the DEM window is read straight from the cloud-optimised GeoTIFF on AWS (only the
@@ -15,10 +15,10 @@ sees the real location. Heights are relative to the terrain at the origin (origi
 from __future__ import annotations
 
 import argparse
-import io
 import json
 import math
 import struct
+import time
 import urllib.parse
 import urllib.request
 import zlib
@@ -32,11 +32,21 @@ DEM_URL = ("https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_N{
            "Copernicus_DSM_COG_10_N{lat:02d}_00_E{lon:03d}_00_DEM.tif")
 OVERPASS = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter",
             "https://overpass.private.coffee/api/interpreter"]
-# Sentinel-2 cloudless 2016 by EOX (contains modified Copernicus Sentinel data 2016), CC BY 4.0.
-# The later yearly mosaics are CC BY-NC-SA, so stay on 2016.
-IMAGERY_URL = "https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless_3857/default/g/{z}/{y}/{x}.jpg"
-IMAGERY_ZOOM = 14           # ~7 m/px at 41 deg N; the mosaic itself is 10 m
-TEXTURE_PX = 2048
+# Ground texture sources (Web Mercator XYZ tiles). zoom: tile level fetched; chunks: the terrain
+# visual is split into chunks x chunks pieces, each with its own TEXTURE_PX texture.
+IMAGERY = {
+    # Sentinel-2 cloudless 2016 by EOX (contains modified Copernicus Sentinel data 2016), CC BY 4.0,
+    # 10 m. The later yearly mosaics are CC BY-NC-SA, so stay on 2016.
+    "sentinel2": {"url": "https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless_3857/default/g/{z}/{y}/{x}.jpg",
+                  "zoom": 14, "chunks": 1, "credit": "Sentinel-2 cloudless 2016 by EOX IT Services GmbH "
+                  "(modified Copernicus Sentinel data 2016), CC BY 4.0"},
+    # Esri World Imagery, ~0.5-1 m here. Esri's terms do not allow using downloaded tiles outside
+    # Esri products; chosen by the project owner (2026-10-23), keep the data out of the repo.
+    "esri": {"url": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+             "zoom": 17, "chunks": 5, "credit": "Source: Esri, Maxar, Earthstar Geographics, and the GIS User "
+             "Community"},
+}
+TEXTURE_PX = 2048           # per chunk: esri 5 x 5 chunks over 10 km -> ~1 m per texel
 USER_AGENT = "uav-sim-worldgen/0.1"
 HEIGHTMAP_PX = 513          # Gazebo wants 2^n + 1
 TERRAIN_MESH_N = 321        # terrain mesh grid (~31 m over 10 km, the DEM's own resolution)
@@ -80,24 +90,57 @@ def merc_tile(lat, lon, z):
     return x, y
 
 
-def fetch_imagery(bbox, z=IMAGERY_ZOOM):
-    from PIL import Image
+def fetch_imagery(bbox, source="sentinel2"):
+    """Download the tiles covering bbox into world/data/tiles/<source>/<z>/ (kept across runs)."""
+    from concurrent.futures import ThreadPoolExecutor
+    src = IMAGERY[source]
+    z = src["zoom"]
     s, w, n, e = bbox
     x0, y0 = (int(math.floor(v)) for v in merc_tile(n, w, z))
     x1, y1 = (int(math.floor(v)) for v in merc_tile(s, e, z))
-    mosaic = Image.new("RGB", ((x1 - x0 + 1) * 256, (y1 - y0 + 1) * 256))
-    for ty in range(y0, y1 + 1):
-        for tx in range(x0, x1 + 1):
-            req = urllib.request.Request(IMAGERY_URL.format(z=z, x=tx, y=ty), headers={"User-Agent": USER_AGENT})
-            with urllib.request.urlopen(req, timeout=60) as r:
-                tile = Image.open(io.BytesIO(r.read())).convert("RGB")
-            mosaic.paste(tile, ((tx - x0) * 256, (ty - y0) * 256))
-    mosaic.save(DATA / "imagery.png")
-    (DATA / "imagery.json").write_text(json.dumps({"z": z, "x0": x0, "y0": y0, "source": IMAGERY_URL}))
-    print(f"imagery -> {DATA / 'imagery.png'} ({(x1 - x0 + 1) * (y1 - y0 + 1)} tiles, zoom {z})")
+    tdir = DATA / "tiles" / source / str(z)
+    tdir.mkdir(parents=True, exist_ok=True)
+
+    def get(xy):
+        tx, ty = xy
+        f = tdir / f"{tx}_{ty}.jpg"
+        if f.exists() and f.stat().st_size > 0:
+            return
+        req = urllib.request.Request(src["url"].format(z=z, x=tx, y=ty), headers={"User-Agent": USER_AGENT})
+        for attempt in range(4):
+            try:
+                with urllib.request.urlopen(req, timeout=60) as r:
+                    f.write_bytes(r.read())
+                return
+            except OSError:
+                time.sleep(2 ** attempt)
+        raise SystemExit(f"tile {z}/{tx}/{ty} failed")
+
+    xy = [(tx, ty) for ty in range(y0, y1 + 1) for tx in range(x0, x1 + 1)]
+    with ThreadPoolExecutor(4) as pool:
+        list(pool.map(get, xy))
+    (DATA / "imagery.json").write_text(json.dumps({"source": source, "z": z, "x0": x0, "y0": y0, "x1": x1, "y1": y1}))
+    print(f"imagery ({source}) -> {tdir} ({len(xy)} tiles, zoom {z})")
 
 
-def fetch(bbox, only=None):
+def load_mosaic():
+    """(mosaic uint8 HxWx3, meta) of the fetched tiles, or (None, None) without imagery."""
+    meta_path = DATA / "imagery.json"
+    if not meta_path.exists():
+        return None, None
+    from PIL import Image
+    meta = json.loads(meta_path.read_text())
+    tdir = DATA / "tiles" / meta["source"] / str(meta["z"])
+    mosaic = np.zeros(((meta["y1"] - meta["y0"] + 1) * 256, (meta["x1"] - meta["x0"] + 1) * 256, 3), np.uint8)
+    for ty in range(meta["y0"], meta["y1"] + 1):
+        for tx in range(meta["x0"], meta["x1"] + 1):
+            tile = np.asarray(Image.open(tdir / f"{tx}_{ty}.jpg").convert("RGB").resize((256, 256)))
+            r0, c0 = (ty - meta["y0"]) * 256, (tx - meta["x0"]) * 256
+            mosaic[r0:r0 + 256, c0:c0 + 256] = tile
+    return mosaic, meta
+
+
+def fetch(bbox, only=None, imagery="sentinel2"):
     s, w, n, e = bbox
     DATA.mkdir(parents=True, exist_ok=True)
     if only in (None, "dem"):
@@ -114,7 +157,7 @@ def fetch(bbox, only=None):
         overpass(f"[out:json][timeout:180];(way[\"highway\"]({s},{w},{n},{e});"
                  f"way[\"waterway\"~\"river|stream|canal\"]({s},{w},{n},{e}););out geom;", DATA / "osm_features.json")
     if only in (None, "imagery"):
-        fetch_imagery(bbox)
+        fetch_imagery(bbox, imagery)
 
 
 # --- helpers -------------------------------------------------------------------------------
@@ -225,15 +268,9 @@ def ribbon(verts, faces, x, y, z, half_width):
         faces += [(k, k + 1, k + 2), (k, k + 2, k + 3)]
 
 
-def ground_texture(path: Path, bbox, px=TEXTURE_PX) -> bool:
-    """Resample the Web Mercator mosaic onto the terrain mesh's lat/lon grid (north up)."""
-    meta_path = DATA / "imagery.json"
-    if not meta_path.exists():
-        print("no imagery (world/data/imagery.png): untextured terrain")
-        return False
+def ground_texture(path: Path, mosaic, meta, bbox, px=TEXTURE_PX):
+    """Resample the Web Mercator mosaic onto a north-up lat/lon grid over bbox (S, W, N, E)."""
     from PIL import Image
-    meta = json.loads(meta_path.read_text())
-    mosaic = np.asarray(Image.open(DATA / "imagery.png").convert("RGB"), dtype=float)
     s, w, n, e = bbox
     gl, gn = np.meshgrid(np.linspace(n, s, px), np.linspace(w, e, px), indexing="ij")
     tx, ty = merc_tile(gl, gn, meta["z"])
@@ -243,8 +280,7 @@ def ground_texture(path: Path, bbox, px=TEXTURE_PX) -> bool:
     fu, fv = (u - u0)[..., None], (v - v0)[..., None]
     img = ((mosaic[v0, u0] * (1 - fu) + mosaic[v0, u0 + 1] * fu) * (1 - fv)
            + (mosaic[v0 + 1, u0] * (1 - fu) + mosaic[v0 + 1, u0 + 1] * fu) * fv)
-    Image.fromarray(np.clip(img, 0, 255).astype(np.uint8)).save(path, quality=92)
-    return True
+    Image.fromarray(np.clip(img, 0, 255).astype(np.uint8)).save(path, quality=90)
 
 
 # --- build ---------------------------------------------------------------------------------
@@ -370,21 +406,48 @@ def build(bbox, origin, name):
     i00 = (r * N + c).ravel(); i01 = i00 + 1; i10 = i00 + N; i11 = i10 + 1
     # rows run north -> south: (i00, i10, i01) is counter-clockwise seen from above
     tf = np.concatenate([np.stack([i00, i10, i01], 1), np.stack([i01, i10, i11], 1)])
-    # texture: u west -> east, v south -> north (OBJ's v axis points up the image)
-    rr, cc = np.meshgrid(np.arange(N), np.arange(N), indexing="ij")
-    tuv = np.stack([cc.ravel() / (N - 1), 1.0 - rr.ravel() / (N - 1)], axis=1)
-    textured = ground_texture(out / "ground.jpg", bbox)
-    write_obj(out / "meshes" / "terrain.obj", tv, tf, tuv if textured else None)
+    write_obj(out / "meshes" / "terrain.obj", tv, tf)  # collision, and the visual when untextured
+
+    # Textured visual: chunks x chunks pieces of the same mesh, each with its own texture, so the
+    # texel size stays ~1 m with high-resolution imagery. u west -> east, v south -> north.
+    mosaic, meta = load_mosaic()
+    for old in list(out.glob("ground*.jpg")) + list((out / "meshes").glob("terrain_*.obj")):
+        old.unlink()
+    terrain_visuals = ""
+    if mosaic is None:
+        print("no imagery (world/data/imagery.json): untextured terrain")
+        terrain_visuals = (f'<visual name="visual"><geometry><mesh><uri>file://{out}/meshes/terrain.obj</uri></mesh>'
+                           "</geometry><material><ambient>0.45 0.5 0.35 1</ambient><diffuse>0.45 0.5 0.35 1</diffuse>"
+                           "</material></visual>")
+    else:
+        k = IMAGERY[meta["source"]]["chunks"]
+        edges = np.linspace(0, N - 1, k + 1).round().astype(int)
+        for a in range(k):
+            for b in range(k):
+                r0, r1, c0, c1 = edges[a], edges[a + 1], edges[b], edges[b + 1]
+                rr, cc = np.meshgrid(np.arange(r0, r1 + 1), np.arange(c0, c1 + 1), indexing="ij")
+                vid = (rr * N + cc).ravel()
+                n_r, n_c = r1 - r0 + 1, c1 - c0 + 1
+                q, p = np.meshgrid(np.arange(n_r - 1), np.arange(n_c - 1), indexing="ij")
+                j00 = (q * n_c + p).ravel(); j01 = j00 + 1; j10 = j00 + n_c; j11 = j10 + 1
+                faces = np.concatenate([np.stack([j00, j10, j01], 1), np.stack([j01, j10, j11], 1)])
+                uv = np.stack([(cc.ravel() - c0) / (c1 - c0), 1.0 - (rr.ravel() - r0) / (r1 - r0)], axis=1)
+                name_ = f"{a}_{b}"
+                write_obj(out / "meshes" / f"terrain_{name_}.obj", tv[vid], faces, uv)
+                ground_texture(out / f"ground_{name_}.jpg", mosaic, meta, (t_lat[r1], t_lon[c0], t_lat[r0], t_lon[c1]))
+                terrain_visuals += (
+                    f'<visual name="ground_{name_}"><geometry><mesh><uri>file://{out}/meshes/terrain_{name_}.obj</uri>'
+                    f"</mesh></geometry><material><ambient>0.8 0.8 0.8 1</ambient><diffuse>1 1 1 1</diffuse>"
+                    f"<specular>0 0 0 1</specular><pbr><metal><albedo_map>{out}/ground_{name_}.jpg</albedo_map>"
+                    f"<roughness>1</roughness><metalness>0</metalness></metal></pbr></material></visual>\n        ")
+    textured = mosaic is not None
+    # Over sharp imagery the real roads and rivers are visible; the OSM ribbons would only cover them.
+    draw_ribbons = not textured or IMAGERY[meta["source"]]["chunks"] == 1
+    credit = IMAGERY[meta["source"]]["credit"] if textured else "none"
 
     write_obj(out / "meshes" / "buildings.obj", bv, bf)
     write_obj(out / "meshes" / "roads.obj", rv, rf)
     write_obj(out / "meshes" / "water.obj", wv, wf)
-    if textured:
-        terrain_material = (f"<material><ambient>0.8 0.8 0.8 1</ambient><diffuse>1 1 1 1</diffuse>"
-                            f"<specular>0 0 0 1</specular><pbr><metal><albedo_map>{out}/ground.jpg</albedo_map>"
-                            f"<roughness>1</roughness><metalness>0</metalness></metal></pbr></material>")
-    else:
-        terrain_material = "<material><ambient>0.45 0.5 0.35 1</ambient><diffuse>0.45 0.5 0.35 1</diffuse></material>"
 
     # ODE aborts on an empty collision mesh: add the OSM models only when they have geometry.
     static_models = ""
@@ -398,7 +461,7 @@ def build(bbox, origin, name):
       </link>
     </model>
 """
-    if rf:
+    if rf and draw_ribbons:
         static_models += f"""    <model name="roads">
       <static>true</static>
       <link name="link">
@@ -407,7 +470,7 @@ def build(bbox, origin, name):
       </link>
     </model>
 """
-    if wf:
+    if wf and draw_ribbons:
         static_models += f"""    <model name="water">
       <static>true</static>
       <link name="link">
@@ -420,8 +483,7 @@ def build(bbox, origin, name):
     sdf = f"""<?xml version="1.0"?>
 <!-- Generated by tools/worldgen.py: Copernicus DEM GLO-30 + OpenStreetMap ({s}, {w}) - ({n}, {e}).
      Origin {lat0:.6f}, {lon0:.6f}, terrain {z0:.1f} m AMSL. Map data (c) OpenStreetMap contributors (ODbL);
-     ground texture: Sentinel-2 cloudless 2016 by EOX IT Services GmbH (modified Copernicus Sentinel data
-     2016), CC BY 4.0;
+     ground texture: {credit};
      elevation (c) DLR e.V. 2010-2014 and (c) Airbus Defence and Space GmbH 2014-2018, Copernicus programme. -->
 <sdf version="1.10">
   <world name="{name}">
@@ -456,8 +518,7 @@ def build(bbox, origin, name):
       <static>true</static>
       <link name="link">
         <collision name="collision"><geometry><mesh><uri>file://{out}/meshes/terrain.obj</uri></mesh></geometry></collision>
-        <visual name="visual"><geometry><mesh><uri>file://{out}/meshes/terrain.obj</uri></mesh></geometry>
-          {terrain_material}</visual>
+        {terrain_visuals}
       </link>
     </model>
 {static_models}  </world>
@@ -471,7 +532,8 @@ def build(bbox, origin, name):
         print(f"installed as PX4 world '{name}' (PX4_GZ_WORLD={name})")
     print(f"world -> {out / (name + '.sdf')}: terrain {size_x / 1000:.1f} x {size_y / 1000:.1f} km, "
           f"relief {zmin:.0f}..{zmax:.0f} m around the origin, {n_buildings} buildings, {n_roads} roads, "
-          f"{n_water} waterways, texture {'yes' if textured else 'no'}")
+          f"{n_water} waterways, texture {meta['source'] if textured else 'none'}"
+          f"{'' if draw_ribbons else ' (road/river ribbons left out over the imagery)'}")
 
 
 def main():
@@ -482,9 +544,10 @@ def main():
     p.add_argument("--origin", nargs=2, type=float, metavar=("LAT", "LON"))
     p.add_argument("--name", default="karabuk")
     p.add_argument("--only", choices=["dem", "buildings", "features", "imagery"], help="fetch one part")
+    p.add_argument("--imagery", choices=sorted(IMAGERY), default="sentinel2", help="ground texture source")
     a = p.parse_args()
     if a.cmd == "fetch":
-        fetch(a.bbox, a.only)
+        fetch(a.bbox, a.only, a.imagery)
     else:
         s, w, n, e = a.bbox
         build(a.bbox, a.origin or ((s + n) / 2, (w + e) / 2), a.name)

@@ -340,11 +340,14 @@ function initMap() {
   track = L.polyline([], { color: "#4aa3ff", weight: 3 }).addTo(map);
   mk = L.circleMarker([0, 0], { radius: 7, color: "#fff", fillColor: "#f85149", fillOpacity: 1, weight: 2 });
   map.on("click", e => {
-    const alt = parseFloat($("i-goalt").value) || null;
+    // Keep the current altitude: the "İrtifa" field is relative to home, and in hilly terrain an
+    // old low value there flew the vehicle into a hillside.
     const html = document.createElement("div");
     const b = document.createElement("button"); b.textContent = "Buraya git"; b.className = "primary";
-    b.onclick = () => { cmd({ action: "goto", lat: e.latlng.lat, lon: e.latlng.lng, alt }); map.closePopup(); };
-    html.append(b);
+    b.onclick = () => { cmd({ action: "goto", lat: e.latlng.lat, lon: e.latlng.lng }); map.closePopup(); };
+    const note = document.createElement("div"); note.className = "hint"; note.style.marginTop = "4px";
+    note.textContent = `İrtifa korunur (${fmt(S.alt_rel, 0)} m)`;
+    html.append(b, note);
     L.popup().setLatLng(e.latlng).setContent(html).openOn(map);
   });
 }
